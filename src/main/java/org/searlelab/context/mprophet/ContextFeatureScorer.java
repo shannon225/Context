@@ -22,7 +22,6 @@ import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.EmptyProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.ProgressIndicator;
 
-import org.searlelab.msrawjava.io.StripeFileInterface;
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
 import org.searlelab.context.encyclopedia.SearchToBLIB;
 import org.searlelab.context.io.IsolationWindowReader;

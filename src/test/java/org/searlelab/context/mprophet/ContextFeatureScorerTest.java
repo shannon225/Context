@@ -22,6 +22,9 @@ public class ContextFeatureScorerTest {
 	
 	@Test
 	public void smokeTest() throws Exception {
+		// This tests if the ContextFeatureScorer can find the correct files and return scored features 
+		
+		// Locate the files for the test	
 		URL rawFileName = getClass().getClassLoader().getResource("IL2A_GPFDIA_0combined_masked0_assay.dia");
 		URL libraryFileName = getClass().getClassLoader().getResource("IL2_and_IL15_Combo.elib");
 		URL fastaFileName = getClass().getClassLoader().getResource("mus_musculus_reviewed_uniprot.fasta");
@@ -32,6 +35,8 @@ public class ContextFeatureScorerTest {
 		assertNotNull("Fasta was not found.", fastaFileName);
 		assertNotNull("Mass list was not found", massListFileName);
 
+		
+		// Copy the files to the temporary directory
 		Path rawFilePath = Paths.get(rawFileName.toURI());
 		Path libraryFilePath = Paths.get(libraryFileName.toURI());
 		Path fastaFilePath = Paths.get(fastaFileName.toURI());
@@ -56,7 +61,8 @@ public class ContextFeatureScorerTest {
 		assertTrue("Background feature file was not created.", Files.exists(backgroundOutput));
 		
 		System.out.println(partitionedFeatures.size() + " paritioned features were returned.");
-		
+		int featuresSize = 17;
+		assertTrue(partitionedFeatures.size()==featuresSize);
 		
 
 		}
