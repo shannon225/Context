@@ -10,8 +10,6 @@ import java.nio.file.Paths;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.mprophet.ContextMProphetExecutor;
-
 import com.google.common.io.Files;
 
 public class ContextMProphetExecutorTest {
