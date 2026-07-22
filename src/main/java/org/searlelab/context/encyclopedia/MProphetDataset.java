@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Optional;
 
+
+import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetData;
+import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.ScoredMProphetData;
 import edu.washington.gs.maccoss.encyclopedia.utils.Pair;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.BenjaminiHochberg;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.General;
@@ -17,6 +20,7 @@ import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetData
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.ScoredMProphetData;
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TFloatArrayList;
+
 
 public class MProphetDataset {
 	private final int startingScoreIndex;
@@ -124,16 +128,20 @@ public class MProphetDataset {
 		double[] targetFDRValues=BenjaminiHochberg.calculateAdjustedPValues(pValueArray);
 		double[] targetLFDRValues=LocalFDR.estimateLocalFDR(pValueArray);
 		
-		// Use pi0 to implement a Storey-style q-value calculation
+		// Use pi0 to update FDR for a Storey-style q-value calculation
+		for (int i = 0; i < targetFDRValues.length; i++) {
+			targetFDRValues[i] = Math.min(1.0, pi0*targetFDRValues[i]);
+		}
+		
 		ArrayList<ScoredMProphetData> returnedData=new ArrayList<ScoredMProphetData>();
 		for (int i = 0; i < targetFDRValues.length; i++) {
-			if (targetFDRValues[i]<targetFDR) {
+			targetFDRValues[i] = Math.min(1.0, pi0*targetFDRValues[i]);
 				ScoredMProphetData data=new ScoredMProphetData(dataset.get(i), 
 						targetScores.get(i), pValueArray[i], targetLFDRValues[i], targetFDRValues[i]);
 				returnedData.add(data);
 				//System.out.println(data.getData().getSequence()+" --> "+data.getScore()+", "+data.getPvalue()+", "+data.getFDR()+", "+data.getLocalFDR());
 			}			
-		}
+		
 		return new Pair<ArrayList<ScoredMProphetData>, Float>(returnedData, (float)pi0);
 	}
 	
