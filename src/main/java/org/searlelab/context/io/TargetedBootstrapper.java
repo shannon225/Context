@@ -19,18 +19,21 @@ import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryFile;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.PecanParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.massspec.PeptideUtils;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.RandomGenerator;
+// import edu.washington.gs.maccoss.encyclopedia.datastructures.Range;
 
 import org.searlelab.msrawjava.model.FragmentScan;
 import org.searlelab.msrawjava.model.PrecursorScan;
-import org.searlelab.msrawjava.model.Range;
 import org.searlelab.msrawjava.model.WindowData;
-import org.searlelab.context.mprophet.IsolationWindow;
+import org.searlelab.msrawjava.model.Range;
 import org.searlelab.msrawjava.io.encyclopedia.EncyclopeDIAFile;
+
+import org.searlelab.context.mprophet.IsolationWindow;
+
 
 public class TargetedBootstrapper {
 
 	public void execute(String libraryPath, String rawFilePath, Path mapOutputPath, int maxSeed, int numberOfPeptides,
-			float windowWidthRT, double halfWindowWidthMz) throws Throwable {
+			float halfWindowWidthRT, double halfWindowWidthMz) throws Throwable {
 		Path rawFile = Paths.get(rawFilePath);
 		String rawFileName = rawFile.getFileName().toString();
 		String baseName = rawFileName.replaceFirst("\\.dia$", "");
@@ -39,7 +42,7 @@ public class TargetedBootstrapper {
 
 		for (int seed = 0; seed <= maxSeed; seed++) {
 			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,
-					mapOutputPath, windowWidthRT);
+					mapOutputPath, halfWindowWidthRT, halfWindowWidthMz);
 
 			Path maskedFileOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.dia");
 			Path assayOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.txt");
@@ -54,7 +57,7 @@ public class TargetedBootstrapper {
 	// into a list
 
 	public ArrayList<IsolationWindow> selectMask(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
-			String libraryPath, Path mapOutputPath, float halfWindowWidthRT)
+			String libraryPath, Path mapOutputPath, float halfWindowWidthRT, double halfWindowWidthMz)
 					throws IOException, SQLException, Throwable {
 
 		// START TIMER 1
@@ -103,11 +106,41 @@ public class TargetedBootstrapper {
 				// Calculate a RT ranges for the isolationWindows object
 				float rtMin = (float) (rtCenter - (60 * (halfWindowWidthRT / 2)));
 				float rtMax = (float) (rtCenter + (60 * (halfWindowWidthRT / 2)));
+				Range rtRange = new Range(rtMin, rtMax);
 
 				// Add sequences to the isolationWindows object
 				IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin, rtMax, false);
 				isolationWindows.add(window);
 				sequencesSelectedForMasking.add(sequence);
+				
+				// Find entrapment decoys 
+				double mzMin = (float) (targetMz - (halfWindowWidthMz / 2));
+				double mzMax = (float) (targetMz + (halfWindowWidthMz / 2));
+				Range mzRange = new Range(mzMin, mzMax);
+				
+				if (mzRange.contains(entry.getPrecursorMZ())) {
+			
+					float possibleDecoyRT = entry.getRetentionTime();
+				
+					double possibleDecoyMz = entry.getPrecursorMZ();
+				
+					if (rtRange.contains(possibleDecoyRT)) {
+						
+						float decoyRTMin = (float) possibleDecoyRT - (halfWindowWidthRT / 2);
+						float decoyRTMax = (float) possibleDecoyRT + (halfWindowWidthRT / 2);
+						
+						byte possibleDecoyCharge = entry.getPrecursorCharge();
+					
+						String possibleDecoySequence = entry.getPeptideModSeq();
+				
+						IsolationWindow decoyWindow = new IsolationWindow(possibleDecoySequence, possibleDecoyMz, possibleDecoyCharge, decoyRTMin, decoyRTMax, true);
+						isolationWindows.add(decoyWindow);
+						System.out.println("The following sequence is being selected as a decoy: " + possibleDecoySequence + " with RT between " + decoyRTMin + " to " + decoyRTMax);
+					}
+				}
+			//	ArrayList<LibraryEntry> possibleDecoys = LibraryInterface.getEntries(mzRange, false, constants);
+				
+				
 
 				// Make decoy sequences for each target peptide
 				String decoy = PeptideUtils.getSmartDecoy(sequence, charge, sequencesSelectedForMasking, params);
@@ -126,7 +159,7 @@ public class TargetedBootstrapper {
 
 		} catch (Exception e) {
 			System.out.println("There was an error with selecting precursors. Check file path.");
-			e.printStackTrace();
+			throw e;
 		}
 
 		// END TIMER 1
@@ -187,7 +220,7 @@ public class TargetedBootstrapper {
 					}
 				}
 
-				for (Entry<Range, WindowData> entry : rawLibraryFile.getRanges().entrySet()) {
+				for (Entry<org.searlelab.msrawjava.model.Range, WindowData> entry : rawLibraryFile.getRanges().entrySet()) {
 					if (mzRange.contains(entry.getKey().getMiddle())) {
 						dutyCycleMap.put(entry.getKey(), entry.getValue());
 					}
@@ -218,7 +251,7 @@ public class TargetedBootstrapper {
 
 		} catch (IOException e) {
 			System.out.println("Unable to open raw file.");
-			e.printStackTrace();
+			throw e;
 		}
 
 		// END TIMER 2
@@ -253,6 +286,8 @@ public class TargetedBootstrapper {
 				writer.newLine();
 
 			}
+		} catch (Exception e) {
+			throw e;
 		}
 	}
 
@@ -270,6 +305,10 @@ public class TargetedBootstrapper {
 				writer.write(decoySequence + "\t" + targetSequence);
 				writer.newLine();
 			}
+		} catch (Exception e) {
+			throw e;
 		}
+	
+
 	}
 }
