@@ -8,12 +8,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.mprophet.ContextFeatureScorer;
-import org.searlelab.context.mprophet.ScoredFeature;
 
 public class ContextFeatureScorerTest {
 
@@ -25,10 +24,10 @@ public class ContextFeatureScorerTest {
 		// This tests if the ContextFeatureScorer can find the correct files and return scored features 
 		
 		// Locate the files for the test	
-		URL rawFileName = getClass().getClassLoader().getResource("IL2A_GPFDIA_0combined_masked0_assay.dia");
-		URL libraryFileName = getClass().getClassLoader().getResource("IL2_and_IL15_Combo.elib");
-		URL fastaFileName = getClass().getClassLoader().getResource("mus_musculus_reviewed_uniprot.fasta");
-		URL massListFileName = getClass().getClassLoader().getResource("IL2A_GPFDIA_0combined_masked0_assay.txt");
+		URL rawFileName = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2A_GPFDIA_0combined_masked0_assay.dia"));
+		URL libraryFileName = Objects.requireNonNull(getClass().getClassLoader().getResource("org/searlelab/context/io/IL2_and_IL15_Combo.elib"));
+		URL fastaFileName = Objects.requireNonNull(getClass().getClassLoader().getResource("org/searlelab/context/mprophet/mus_musculus_reviewed_uniprot.fasta"));
+		URL massListFileName = Objects.requireNonNull(getClass().getClassLoader().getResource("org/searlelab/context/io/IL2A_GPFDIA_0combined_masked0_assay.txt"));
 
 		// These files must exist for the test to pass
 		assertNotNull("DIA file was not found. ", rawFileName);

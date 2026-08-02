@@ -6,6 +6,7 @@ import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -25,10 +26,10 @@ public class ContextMProphetExecutorTest {
 		System.out.println("Running ContextMProphetExecutorTest.");
 
 		// Locate resources
-		URL libraryFileName = getClass().getClassLoader().getResource("org/searlelab/context/mprophet/IL2_and_IL15_Combo.elib");
-		URL fastaFileName = getClass().getClassLoader().getResource("org/searlelab/context/mprophet/mus_musculus_reviewed_uniprot.fasta");
-		URL diaFileName = getClass().getClassLoader().getResource("org/searlelab/context/mprophet/IL2A_GPFDIA_0combined_masked0_assay.dia");
-		URL massListName = getClass().getClassLoader().getResource("org/searlelab/context/mprophet/IL2A_GPFDIA_0combined_masked0_assay.txt");
+		URL libraryFileName = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2_and_IL15_Combo.elib"));
+		URL fastaFileName = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/mprophet/mus_musculus_reviewed_uniprot.fasta"));
+		URL diaFileName = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2A_GPFDIA_0combined_masked0_assay.dia"));
+		URL massListName = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2A_GPFDIA_0combined_masked0_assay.txt"));
 
 		// Are all the paths mapped to real files? 
 		assertNotNull("Library was not found. ", libraryFileName);

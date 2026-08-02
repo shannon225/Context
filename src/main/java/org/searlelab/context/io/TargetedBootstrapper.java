@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.zip.DataFormatException;
 
 import edu.washington.gs.maccoss.encyclopedia.datastructures.AminoAcidConstants;
 import edu.washington.gs.maccoss.encyclopedia.datastructures.LibraryEntry;
@@ -19,7 +20,7 @@ import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryFile;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.PecanParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.massspec.PeptideUtils;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.RandomGenerator;
-// import edu.washington.gs.maccoss.encyclopedia.datastructures.Range;
+//import edu.washington.gs.maccoss.encyclopedia.datastructures.Range;
 
 import org.searlelab.msrawjava.model.FragmentScan;
 import org.searlelab.msrawjava.model.PrecursorScan;
@@ -53,9 +54,8 @@ public class TargetedBootstrapper {
 		}
 	}
 
-	// First function - Randomly Selects Precursors from a library and compiles them
-	// into a list
-
+	// First function - Randomly Selects Precursors from a library and compiles them into a list
+	
 	public ArrayList<IsolationWindow> selectMask(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
 			String libraryPath, Path mapOutputPath, float halfWindowWidthRT, double halfWindowWidthMz)
 					throws IOException, SQLException, Throwable {
@@ -76,8 +76,7 @@ public class TargetedBootstrapper {
 		HashSet<Integer> simulatedAssaySet = new HashSet<>();
 		HashSet<String> sequencesSelectedForMasking = new HashSet<>();
 		AminoAcidConstants constants = new AminoAcidConstants();
-		SearchParameters params = PecanParameterParser.getDefaultParametersObject(); // need parameters to run
-		// smartDecoy
+//		SearchParameters params = PecanParameterParser.getDefaultParametersObject(); // need parameters to run
 
 		library.openFile(file);
 		// Randomly select precursors loop
@@ -85,7 +84,7 @@ public class TargetedBootstrapper {
 
 			// Load all entries
 			ArrayList<LibraryEntry> entries = library.getAllEntries(false, aaConstants);
-
+			
 			while (simulatedAssaySet.size() < numberOfPeptides) {
 				randomValue = RandomGenerator.randomInt(randomValue);
 				int index = Math.abs(randomValue) % entries.size();
@@ -104,54 +103,58 @@ public class TargetedBootstrapper {
 				byte charge = entry.getPrecursorCharge();
 
 				// Calculate a RT ranges for the isolationWindows object
-				float rtMin = (float) (rtCenter - (60 * (halfWindowWidthRT / 2)));
-				float rtMax = (float) (rtCenter + (60 * (halfWindowWidthRT / 2)));
+				float rtMin = (float) (rtCenter - (60f * (halfWindowWidthRT)) - 240f);
+				float rtMax = (float) (rtCenter + (60f * (halfWindowWidthRT)) + 240f);
 				Range rtRange = new Range(rtMin, rtMax);
+				
 
 				// Add sequences to the isolationWindows object
 				IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin, rtMax, false);
 				isolationWindows.add(window);
 				sequencesSelectedForMasking.add(sequence);
 				
-				// Find entrapment decoys 
-				double mzMin = (float) (targetMz - (halfWindowWidthMz / 2));
-				double mzMax = (float) (targetMz + (halfWindowWidthMz / 2));
-				Range mzRange = new Range(mzMin, mzMax);
-				
-				if (mzRange.contains(entry.getPrecursorMZ())) {
-			
-					float possibleDecoyRT = entry.getRetentionTime();
-				
-					double possibleDecoyMz = entry.getPrecursorMZ();
-				
-					if (rtRange.contains(possibleDecoyRT)) {
-						
-						float decoyRTMin = (float) possibleDecoyRT - (halfWindowWidthRT / 2);
-						float decoyRTMax = (float) possibleDecoyRT + (halfWindowWidthRT / 2);
-						
-						byte possibleDecoyCharge = entry.getPrecursorCharge();
-					
-						String possibleDecoySequence = entry.getPeptideModSeq();
-				
-						IsolationWindow decoyWindow = new IsolationWindow(possibleDecoySequence, possibleDecoyMz, possibleDecoyCharge, decoyRTMin, decoyRTMax, true);
-						isolationWindows.add(decoyWindow);
-						System.out.println("The following sequence is being selected as a decoy: " + possibleDecoySequence + " with RT between " + decoyRTMin + " to " + decoyRTMax);
-					}
-				}
-			//	ArrayList<LibraryEntry> possibleDecoys = LibraryInterface.getEntries(mzRange, false, constants);
-				
-				
+				System.out.println("Target is " + targetMz + " for " + sequence + " at " + rtCenter/60);
 
-				// Make decoy sequences for each target peptide
-				String decoy = PeptideUtils.getSmartDecoy(sequence, charge, sequencesSelectedForMasking, params);
-				String correctedDecoyMass = PeptideUtils.getCorrectedMasses(decoy, constants);
-				double decoyMz = constants.getChargedMass(correctedDecoyMass, charge);
-				targetDecoyOriginMap.put(sequence, decoy);
+				// m/z tolerance for decoys 
+				double mzToleranceDa = targetMz * 50 / 1_000_000;
+				double upperMz = targetMz + mzToleranceDa;
+				double lowerMz = targetMz - mzToleranceDa;
+
+				Range libraryMzRange = new Range(lowerMz, upperMz);
+				
+				ArrayList<LibraryEntry> matchingPeptides = library.getEntries(libraryMzRange, false, constants);
+						
+				for (LibraryEntry candidate : matchingPeptides) {
+					
+					float candidateRT = candidate.getRetentionTime();
+					
+					if (!rtRange.contains(candidateRT)) {
+						double decoyMz = candidate.getPrecursorMZ();
+						String decoySequence = candidate.getLegacyPeptideModSeq();
+						byte decoyCharge = candidate.getPrecursorCharge();
+						
+						float decoyRTMin = candidateRT - (60f * (halfWindowWidthRT));
+						float decoyRTMax = candidateRT + (60f * (halfWindowWidthRT));
+						
+						IsolationWindow decoyWindow = new IsolationWindow(decoySequence, decoyMz, decoyCharge, decoyRTMin, decoyRTMax, true);
+
+						isolationWindows.add(decoyWindow);
+						
+						// Print info to the console to see what decoys are selected
+						System.out.println("Decoy candidate is " + decoyMz + " for " + decoySequence + " at " + candidateRT/60);
+						break; // end loop after adding one decoy per peptide
+
+					}
+					
+					
+				}
+				
+				
 				writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
 
 				// Add decoys to Isolation Windows
-				IsolationWindow decoyWindow = new IsolationWindow(decoy, decoyMz, charge, rtMin, rtMax, true);
-				isolationWindows.add(decoyWindow);
+	//			IsolationWindow decoyWindow = new IsolationWindow(decoy, decoyMz, charge, rtMin, rtMax, true);
+	//			isolationWindows.add(decoyWindow);
 			}
 
 			library.close();
