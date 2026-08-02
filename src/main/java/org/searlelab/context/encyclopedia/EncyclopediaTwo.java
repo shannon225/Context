@@ -478,7 +478,7 @@ public class EncyclopediaTwo {
 			consumer2Thread.join();
 			consumer3Thread.join();
 			teeConsumer.close();
-		}
+		} 
 
 		Logger.logLine(writeResultsConsumer.getNumberProcessed()+" total peptides processed.");
 

@@ -12,7 +12,6 @@ import java.util.Objects;
 import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.io.TargetedBootstrapper;
 
 public class TargetedBootstrapperTest {
 
@@ -24,7 +23,7 @@ public class TargetedBootstrapperTest {
 		Path testDirectory = tempFolder.newFolder("targeted-bootstrapper-test").toPath();
 		System.out.println("Test class loaded from: " + getClass().getProtectionDomain().getCodeSource().getLocation());
 
-		URL libraryURL = Objects.requireNonNull(TargetedBootstrapperTest.class.getResource("/org/searlelab/context/io/IL2_and_IL15_Combo.elib"), "Could not find the library resource.");
+		URL libraryURL = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2_and_IL15_Combo.elib"), "Could not find the library resource.");
 		String library = Paths.get(libraryURL.toURI()).toString();
 
 		URL diaURL = Objects.requireNonNull(getClass().getResource("/org/searlelab/context/io/IL2A_GPFDIA_0combined_masked0_assay.dia"), "Could not find the DIA file resource.");
