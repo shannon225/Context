@@ -45,7 +45,6 @@ public class ContextMProphetExecutor {
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
 
-			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
 			System.out.println("Finished scoring peptides with background-trained lda model. "
 					+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
 
@@ -59,7 +58,6 @@ public class ContextMProphetExecutor {
 		File fasta = new File(fastaPath);
 		File diaFile = new File(diaFilePath);
 		File library = new File(libraryPath);
-
 		String baseName = diaFilePath.replaceFirst("\\.dia$", "");
 
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
@@ -87,7 +85,6 @@ public class ContextMProphetExecutor {
 			MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
-			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
 			System.out.println("Finished scoring peptides with background-trained lda model. "
 					+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
 

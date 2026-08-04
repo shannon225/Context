@@ -36,8 +36,6 @@ import edu.washington.gs.maccoss.encyclopedia.DIABrowser;
 import edu.washington.gs.maccoss.encyclopedia.ProgramType;
 import edu.washington.gs.maccoss.encyclopedia.Scribe;
 import edu.washington.gs.maccoss.encyclopedia.SearchGUIMain;
-//import edu.washington.gs.maccoss.encyclopedia.SearchToBLIB;
-//import edu.washington.gs.maccoss.encyclopedia.SearchToBLIB.OutputFormat;
 import edu.washington.gs.maccoss.encyclopedia.Thesaurus;
 import edu.washington.gs.maccoss.encyclopedia.Walnut;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.AbstractScoringResult;

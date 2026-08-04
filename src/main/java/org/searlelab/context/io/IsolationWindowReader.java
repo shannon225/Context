@@ -31,12 +31,9 @@ public class IsolationWindowReader {
 				String[] columns = line.split(delim, -1);
 
 				if (!hasPrintedDebugInfo) {
-					// System.out.println("Line being read: " + line);
-					// System.out.println("Number of columns: " + columns.length);
 					hasPrintedDebugInfo = true;
 				}
 
-				// String columns[] = line.split(DELIM, -1);
 				System.out.println(line); // Console will print what the data looks like as its read in
 
 				String peptide = columns[0];
@@ -55,9 +52,7 @@ public class IsolationWindowReader {
 				isolationWindows.add(window);
 
 				if (!hasPrintedAddingPrecursor) {
-					// System.out.println("Adding " + peptide + " with precursor at " + targetMz + "
-					// m/z, charge " + charge + ", RT " + rtCenter + " min " + rtMin/60 + " max " +
-					// rtMax/60 + " isDecoy = " + isDecoy);
+
 					hasPrintedAddingPrecursor = true;
 				}
 
