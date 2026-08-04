@@ -44,7 +44,6 @@ public class ContextMProphetExecutor {
 			MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
-			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
 			System.out.println("Finished scoring peptides with background-trained lda model. "
 					+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
 
@@ -58,7 +57,6 @@ public class ContextMProphetExecutor {
 		File fasta = new File(fastaPath);
 		File diaFile = new File(diaFilePath);
 		File library = new File(libraryPath);
-
 		String baseName = diaFilePath.replaceFirst("\\.dia$", "");
 
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
@@ -86,7 +84,6 @@ public class ContextMProphetExecutor {
 			MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
-			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
 			System.out.println("Finished scoring peptides with background-trained lda model. "
 					+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
 
@@ -114,20 +111,14 @@ public class ContextMProphetExecutor {
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 			File featureFile = new File(featureFileName + "_mprophet.features.txt");
-//			File referenceFeatureFile = new File(featureFileName + "_reference.features.txt");
 
 			MProphetExecutionData featureData = makeMProphetExecutionData(featureFile, fasta, params, ".pep");
-//			MProphetExecutionData referenceData = makeMProphetExecutionData(referenceFeatureFile, fasta, params, ".pep");
 
 			float peptideFDRThreshold = 0.01f;
 			int seed = 1;
 			int round = 1;
 
 			MProphetResult mprophetResult = MProphetReiter.executeMProphetTSV(featureData, peptideFDRThreshold, seed, params.getAAConstants(), round);
-	//		LinearDiscriminantAnalysis backgroundLDA = backgroundMProphetResult.getLDA();
-
-			// 	Use the background LDA model on the reference feature file without retraining
-	//		MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + featureFile.getAbsolutePath());
 			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
