@@ -28,7 +28,7 @@ import org.searlelab.context.mprophet.IsolationWindow;
 
 public class TargetedBootstrapper {
 
-	public void execute(String libraryPath, String rawFilePath, Path mapOutputPath, int maxSeed, int numberOfPeptides,
+	public void execute(String libraryPath, String rawFilePath, int maxSeed, int numberOfPeptides,
 			float halfWindowWidthRT, double halfWindowWidthMz) throws Throwable {
 		Path rawFile = Paths.get(rawFilePath);
 		String rawFileName = rawFile.getFileName().toString();
@@ -36,9 +36,8 @@ public class TargetedBootstrapper {
 
 		AminoAcidConstants aaConstants = new AminoAcidConstants();
 
-		for (int seed = 0; seed <= maxSeed; seed++) {
-			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,
-					mapOutputPath, halfWindowWidthRT, halfWindowWidthMz);
+		for (int seed = 1; seed <= maxSeed; seed++) {
+			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,halfWindowWidthRT, halfWindowWidthMz);
 
 			Path maskedFileOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.dia");
 			Path assayOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.txt");
@@ -53,117 +52,164 @@ public class TargetedBootstrapper {
 	// into a list
 
 	public ArrayList<IsolationWindow> selectMask(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
-			String libraryPath, Path mapOutputPath, float halfWindowWidthRT, double halfWindowWidthMz)
-			throws IOException, SQLException, Throwable {
+			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz)
+					throws IOException, SQLException, Throwable {
 
 		// START TIMER 1
 		long startTime = System.nanoTime();
-		LibraryFile library = new LibraryFile();
-		File file = new File(libraryPath);
-
 		ArrayList<IsolationWindow> isolationWindows = new ArrayList<>();
 
 		// For mapping targets and decoys later
-		HashMap<String, String> targetDecoyOriginMap = new HashMap<>();
+	//	HashMap<String, String> targetDecoyOriginMap = new HashMap<>();
 
 		// Set parameters before the loop
-		int randomValue = 0 + i; // Add haliburton's number to get a random number
+		int randomValue = 1 + i; // Add haliburton's number to get a random number
 
 		HashSet<Integer> simulatedAssaySet = new HashSet<>();
-		HashSet<String> sequencesSelectedForMasking = new HashSet<>();
+		HashSet<String> targetSequencesSelected = new HashSet<>();
+		HashSet<String> decoySequencesSelected = new HashSet<>();
+		HashMap<String, String> discardedTDPairs = new HashMap<>();
 
+		LibraryFile library = new LibraryFile();
+		File file = new File(libraryPath);
 		library.openFile(file);
+
 		// Randomly select precursors loop
 		try {
 
 			// Load all entries
 			ArrayList<LibraryEntry> entries = library.getAllEntries(false, aaConstants);
 
+			// Select target precursors
 			while (simulatedAssaySet.size() < numberOfPeptides) {
 				randomValue = RandomGenerator.randomInt(randomValue);
 				int index = Math.abs(randomValue) % entries.size();
 				simulatedAssaySet.add(index);
 			}
+			
+			
+			// While loop for selecting targets and decoys
 
-			for (Integer index : simulatedAssaySet) {
+			while (targetSequencesSelected.size() < numberOfPeptides) {
 
-				// Retrieve the library entry at the random index
-				LibraryEntry entry = entries.get(index);
+				for (Integer index : simulatedAssaySet) {
 
-				// Get the m/z, RT and sequence
-				double targetMz = entry.getPrecursorMZ();
-				float rtCenter = entry.getRetentionTimeInSec();
-				String sequence = entry.getPeptideModSeq();
-				byte charge = entry.getPrecursorCharge();
+					// Retrieve the library entry at the random index
+					LibraryEntry entry = entries.get(index);
 
-				// Calculate a RT ranges for the isolationWindows object
-				float rtMin = (float) (rtCenter - (60f * (halfWindowWidthRT)) - 240f);
-				float rtMax = (float) (rtCenter + (60f * (halfWindowWidthRT)) + 240f);
-				Range rtRange = new Range(rtMin, rtMax);
+					// Get the m/z, RT and sequence
+					double targetMz = entry.getPrecursorMZ();
+					float rtCenter = entry.getRetentionTimeInSec();
+					String sequence = entry.getAccuratePeptideModSeq(aaConstants);
+					byte charge = entry.getPrecursorCharge();
 
-				// Add target sequences to the isolationWindows object
-				IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin, rtMax, false);
-				isolationWindows.add(window);
-				sequencesSelectedForMasking.add(sequence);
-				boolean decoyFound = false;
-				System.out.println("Target is " + targetMz + " for " + sequence + " at " + rtCenter / 60);
+					// Calculate a RT ranges for the isolationWindows object
+					float rtMin = (float) (rtCenter - (60f * (halfWindowWidthRT)));
+					float rtMax = (float) (rtCenter + (60f * (halfWindowWidthRT)));
 
-				// m/z tolerance for decoys
-				double mzToleranceDa = targetMz * 10 / 1_000_000;
+					float windowRTMin = rtMin - 240f;
+					float windowRTMax = rtMax + 240f;
 
-				while (!decoyFound && mzToleranceDa < 200) {
-					double upperMz = targetMz + mzToleranceDa;
-					double lowerMz = targetMz - mzToleranceDa;
+					Range rtRange = new Range(windowRTMin, windowRTMax);
 
-					Range libraryMzRange = new Range(lowerMz, upperMz);
+					// Add target sequences to the isolationWindows object
+					if (!targetSequencesSelected.contains(sequence) && !decoySequencesSelected.contains(sequence)) {
 
-					ArrayList<LibraryEntry> matchingPeptides = library.getEntries(libraryMzRange, false, aaConstants);
+						// Mark the target as not having a decoy
+						boolean decoyFound = false;
 
-					// Loop to find decoys for Entrapment that have the same precursor, but
-					// different RT
-					for (LibraryEntry candidate : matchingPeptides) {
+						// m/z tolerance for decoys
+						double mzTolerancePPM = 10;
 
-						float candidateRT = candidate.getRetentionTime();
-						String decoySequence = candidate.getAccuratePeptideModSeq(aaConstants);
+						while (!decoyFound && mzTolerancePPM < 320) { 
+							double mzToleranceDa = targetMz * mzTolerancePPM / 1_000_000;
+							double upperMz = targetMz + mzToleranceDa;
+							double lowerMz = targetMz - mzToleranceDa;
 
-						if (!rtRange.contains(candidateRT) && !decoySequence.equals(sequence)) {
-							double decoyMz = candidate.getPrecursorMZ();
-							byte decoyCharge = candidate.getPrecursorCharge();
+							Range libraryMzRange = new Range(lowerMz, upperMz);
 
-							float decoyRTMin = candidateRT - (60f * (halfWindowWidthRT));
-							float decoyRTMax = candidateRT + (60f * (halfWindowWidthRT));
+							ArrayList<LibraryEntry> candidateDecoys = library.getEntries(libraryMzRange, false,
+									aaConstants);
 
-							IsolationWindow decoyWindow = new IsolationWindow(decoySequence, decoyMz, decoyCharge,
-									decoyRTMin, decoyRTMax, true);
-							
-							decoyFound = true;
+							// Loop to find entrapment decoys at a different window from target peptides
 
-							isolationWindows.add(decoyWindow);
-							targetDecoyOriginMap.put(sequence, decoySequence);
+							for (LibraryEntry candidate : candidateDecoys) {
 
-							// Print info to the console to see what decoys are selected
-							System.out.println("Decoy candidate is " + decoyMz + " for " + decoySequence + " at "
-									+ candidateRT / 60);
+								float candidateRT = candidate.getRetentionTime();
+								String decoySequence = candidate.getAccuratePeptideModSeq(aaConstants);
 
-							break; // end loop after adding one decoy per target
-						}
+								// If the candidate RT is outside of the target RT range, and the decoy sequence
+								// is different from the target, then add the decoy
+								if (!rtRange.contains(candidateRT) 
+										&& !decoySequence.equals(sequence)
+										&& !targetSequencesSelected.contains(sequence)
+										&& !decoySequencesSelected.contains(decoySequence) // checks if the decoy has been used
+										&& !targetSequencesSelected.contains(decoySequence) // checks if decoy is also a target
+										&& !discardedTDPairs.containsValue(sequence)  // checks if target was used in target-decoy pair 
+										&& !discardedTDPairs.containsKey(decoySequence)) {  // checks if decoy was used in target-decoy pair
+									
+									double decoyMz = candidate.getPrecursorMZ();
+									byte decoyCharge = candidate.getPrecursorCharge();
+
+									float decoyRTMin = candidateRT - (60f * (halfWindowWidthRT));
+									float decoyRTMax = candidateRT + (60f * (halfWindowWidthRT));
+
+									IsolationWindow decoyWindow = new IsolationWindow(decoySequence, decoyMz,
+											decoyCharge, decoyRTMin, decoyRTMax, true);
+
+									decoyFound = true;
+
+									//  Add the target once a matching decoy is found
+
+									IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin,
+											rtMax, false);
+									isolationWindows.add(window);
+									targetSequencesSelected.add(sequence);
+
+									System.out.println(
+											"Target is " + targetMz + " for " + sequence + " at " + rtCenter / 60);
+
+									isolationWindows.add(decoyWindow);
+									decoySequencesSelected.add(decoySequence);
+									discardedTDPairs.put(decoySequence, sequence);
+
+									// Print info to the console to see what decoys are selected
+									System.out.println("Decoy candidate is " + decoyMz + " for " + decoySequence
+											+ " at " + candidateRT / 60);
+
+									break; // end loop after adding one decoy per target
+								}
+							}
+
+							if (!decoyFound && mzTolerancePPM < 320) {
+								mzTolerancePPM = mzTolerancePPM * 2;
+								continue;
+							}
+						} // end finding decoy loop
+					} else {
+						
 					}
-					
-					if (!decoyFound) {
-						mzToleranceDa = mzToleranceDa * 2;
-					}
+				} // end indexing through the HashSet loop 
+				
+				int peptidesLeftToSelect = simulatedAssaySet.size() - targetSequencesSelected.size();
+				int newAssaySetSize = numberOfPeptides + peptidesLeftToSelect;
+
+  			  while (newAssaySetSize <entries.size() && simulatedAssaySet.size() < newAssaySetSize) {
+					randomValue = RandomGenerator.randomInt(randomValue);
+					int index = Math.abs(randomValue) % entries.size();
+					simulatedAssaySet.add(index);
 				}
-
-					}
-			writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
-
-			System.out.println(isolationWindows.size() + " Precursors marked for extraction.");
-
-
+			}
+			
+			
 		} catch (Exception e) {
-			System.out.println("There was an error with selecting precursors. Check file path.");
+			System.out.println("There was an error with selecting precursors. Check the file path. If it fails again, you may not have enough peptides in your dataset to bootstrap a synthetic assay.");
 			throw e;
 		} finally {
+	//		writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
+
+			System.out.println(isolationWindows.size() + " Precursors marked for extraction.");
+			
 			library.close();
 
 		}
@@ -201,63 +247,63 @@ public class TargetedBootstrapper {
 			// Add Ranges
 			HashMap<Range, WindowData> dutyCycleMap = new HashMap<>();
 			System.out.println("Masking DIA file based on the selected precursors...");
-			
+
 			for (IsolationWindow window : isolationWindows) {
 				boolean isDecoy = window.isDecoy();
-				
+
 				if (!isDecoy) {
-					
-				double windowMz = window.getTargetMz();
-				float windowStartTime = window.getRtMin();
-				float windowStopTime = window.getRtMax();
-				boolean sqrt = false;
-				double mzStart = windowMz - halfWindowWidthMz;
-				double mzStop = windowMz + halfWindowWidthMz;
-				Range mzRange = new Range(mzStart, mzStop);
 
-				ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile
-						.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
-				ArrayList<FragmentScan> matchingScans = new ArrayList<>();
+					double windowMz = window.getTargetMz();
+					float windowStartTime = window.getRtMin();
+					float windowStopTime = window.getRtMax();
+					boolean sqrt = false;
+					double mzStart = windowMz - halfWindowWidthMz;
+					double mzStop = windowMz + halfWindowWidthMz;
+					Range mzRange = new Range(mzStart, mzStop);
 
-				// Add Fragment Scans
-				for (FragmentScan scan : fragmentScansFromWindow) {
-					double scanMz = scan.getPrecursorMZ();
-					float scanRT = scan.getScanStartTime();
-					int scanIndex = scan.getSpectrumIndex();
-					if (mzRange.contains(scanMz) && !addedFragments.contains(scanIndex)) {
-						matchingScans.add(scan);
-						addedFragments.add(scanIndex);
+					ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile
+							.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
+					ArrayList<FragmentScan> matchingScans = new ArrayList<>();
+
+					// Add Fragment Scans
+					for (FragmentScan scan : fragmentScansFromWindow) {
+						double scanMz = scan.getPrecursorMZ();
+						float scanRT = scan.getScanStartTime();
+						int scanIndex = scan.getSpectrumIndex();
+						if (mzRange.contains(scanMz) && !addedFragments.contains(scanIndex)) {
+							matchingScans.add(scan);
+							addedFragments.add(scanIndex);
+						}
 					}
-				}
 
-				for (Entry<org.searlelab.msrawjava.model.Range, WindowData> entry : rawLibraryFile.getRanges()
-						.entrySet()) {
-					if (mzRange.contains(entry.getKey().getMiddle())) {
-						dutyCycleMap.put(entry.getKey(), entry.getValue());
+					for (Entry<org.searlelab.msrawjava.model.Range, WindowData> entry : rawLibraryFile.getRanges()
+							.entrySet()) {
+						if (mzRange.contains(entry.getKey().getMiddle())) {
+							dutyCycleMap.put(entry.getKey(), entry.getValue());
+						}
 					}
-				}
-				maskedFile.setRanges(dutyCycleMap);
-				maskedFile.addStripe(matchingScans);
+					maskedFile.setRanges(dutyCycleMap);
+					maskedFile.addStripe(matchingScans);
 
-				// Add Precursor Scans
-				ArrayList<PrecursorScan> precursorScanFromWindow = rawLibraryFile.getPrecursors(windowStartTime,
-						windowStopTime);
-				ArrayList<PrecursorScan> matchingPrecursors = new ArrayList<>();
+					// Add Precursor Scans
+					ArrayList<PrecursorScan> precursorScanFromWindow = rawLibraryFile.getPrecursors(windowStartTime,
+							windowStopTime);
+					ArrayList<PrecursorScan> matchingPrecursors = new ArrayList<>();
 
-				for (PrecursorScan precursor : precursorScanFromWindow) {
-					Range precursorRange = new Range(precursor.getIsolationWindowLower(),
-							precursor.getIsolationWindowUpper());
-					int spectrumIndex = precursor.getSpectrumIndex();
-					if ((precursorRange.contains(mzRange) && !addedPrecursors.contains(spectrumIndex))) {
-						matchingPrecursors.add(precursor);
-						addedPrecursors.add(spectrumIndex);
+					for (PrecursorScan precursor : precursorScanFromWindow) {
+						Range precursorRange = new Range(precursor.getIsolationWindowLower(),
+								precursor.getIsolationWindowUpper());
+						int spectrumIndex = precursor.getSpectrumIndex();
+						if ((precursorRange.contains(mzRange) && !addedPrecursors.contains(spectrumIndex))) {
+							matchingPrecursors.add(precursor);
+							addedPrecursors.add(spectrumIndex);
+						}
 					}
-				}
-				maskedFile.addPrecursor(matchingPrecursors);
+					maskedFile.addPrecursor(matchingPrecursors);
 
-			}
-			maskedFile.setFileName(rawFile.getName(), null, rawFile.getAbsolutePath());
-			maskedFile.addMetadata(diaFilePath, diaFilePath);
+				}
+				maskedFile.setFileName(rawFile.getName(), null, rawFile.getAbsolutePath());
+				maskedFile.addMetadata(diaFilePath, diaFilePath);
 			}
 		} catch (IOException e) {
 			System.out.println("Unable to open raw file.");
