@@ -32,11 +32,11 @@ public class TargetedBootstrapperTest {
 		Path testDIAPath = testDirectory.resolve("IL2A_GPFDIA_0combined.dia");
 
 		Files.copy(sourceDIAPath, testDIAPath, StandardCopyOption.REPLACE_EXISTING);
-		Path targetDecoyMap = testDirectory.resolve("target_decoy_map.txt");
+	//	Path targetDecoyMap = testDirectory.resolve("target_decoy_map.txt");
 		TargetedBootstrapper bootstrapper = new TargetedBootstrapper();
-		bootstrapper.execute(library, testDIAPath.toString(), targetDecoyMap, 0, 10, 0.5f, 1.0);
+		bootstrapper.execute(library, testDIAPath.toString(), 1, 10, 0.5f, 1.0);
 		
-		Path expectedOutput = testDirectory.resolve("IL2A_GPFDIA_0combined_masked0_assay.txt");
+		Path expectedOutput = testDirectory.resolve("IL2A_GPFDIA_0combined_masked1_assay.txt");
 		assertTrue("The bootstrapper did not create the expected output.", Files.exists(expectedOutput));
 
 	}
