@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.zip.DataFormatException;
 
 import edu.washington.gs.maccoss.encyclopedia.datastructures.AminoAcidConstants;
 import edu.washington.gs.maccoss.encyclopedia.datastructures.LibraryEntry;
@@ -72,8 +71,6 @@ public class TargetedBootstrapper {
 
 		HashSet<Integer> simulatedAssaySet = new HashSet<>();
 		HashSet<String> sequencesSelectedForMasking = new HashSet<>();
-
-		AminoAcidConstants constants = new AminoAcidConstants();
 
 		library.openFile(file);
 		// Randomly select precursors loop
@@ -138,9 +135,10 @@ public class TargetedBootstrapper {
 
 							IsolationWindow decoyWindow = new IsolationWindow(decoySequence, decoyMz, decoyCharge,
 									decoyRTMin, decoyRTMax, true);
+							
+							decoyFound = true;
 
 							isolationWindows.add(decoyWindow);
-							decoyFound = true;
 							targetDecoyOriginMap.put(sequence, decoySequence);
 
 							// Print info to the console to see what decoys are selected
@@ -156,14 +154,18 @@ public class TargetedBootstrapper {
 					}
 				}
 
-					writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
+					}
+			writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
 
-					library.close();
-					System.out.println(isolationWindows.size() + " Precursors marked for extraction.");
-			}
+			System.out.println(isolationWindows.size() + " Precursors marked for extraction.");
+
+
 		} catch (Exception e) {
 			System.out.println("There was an error with selecting precursors. Check file path.");
 			throw e;
+		} finally {
+			library.close();
+
 		}
 
 		// END TIMER 1
@@ -191,16 +193,20 @@ public class TargetedBootstrapper {
 		HashSet<Integer> addedFragments = new HashSet<>();
 
 		// System.out.println("Is the .dia file open? " + rawLibraryFile.isOpen());
+		rawLibraryFile.openFile(rawFile);
 
 		try {
-			rawLibraryFile.openFile(rawFile);
 			maskedFile.openFile();
 
 			// Add Ranges
 			HashMap<Range, WindowData> dutyCycleMap = new HashMap<>();
 			System.out.println("Masking DIA file based on the selected precursors...");
+			
 			for (IsolationWindow window : isolationWindows) {
-
+				boolean isDecoy = window.isDecoy();
+				
+				if (!isDecoy) {
+					
 				double windowMz = window.getTargetMz();
 				float windowStartTime = window.getRtMin();
 				float windowStopTime = window.getRtMax();
@@ -252,8 +258,7 @@ public class TargetedBootstrapper {
 			}
 			maskedFile.setFileName(rawFile.getName(), null, rawFile.getAbsolutePath());
 			maskedFile.addMetadata(diaFilePath, diaFilePath);
-			rawLibraryFile.close();
-
+			}
 		} catch (IOException e) {
 			System.out.println("Unable to open raw file.");
 			throw e;
@@ -262,6 +267,7 @@ public class TargetedBootstrapper {
 		// END TIMER 2
 		long endTime = System.nanoTime();
 		long duration = endTime - startTime;
+		rawLibraryFile.close();
 
 		System.out.println("maskDIAFileBasedOnIsolationWindows(): Time taken (ms) : " + duration / 1_000_000);
 
