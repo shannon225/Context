@@ -53,41 +53,69 @@ public class ContextMProphetExecutor {
 		}
 
 	}
-	
-	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, String diaFilePath, String massListPath, File diaFolder) {
+
+	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, File diaFolder) {
 		File fasta = new File(fastaPath);
-		File diaFile = new File(diaFilePath);
+		//	File diaFile = new File(diaFilePath);
 		File library = new File(libraryPath);
-		String baseName = diaFilePath.replaceFirst("\\.dia$", "");
+	//	String baseName = diaFilePath.replaceFirst("\\.dia$", "");
+		File[] diaFilesInFolder = diaFolder.listFiles();
+
+		System.out.println("Running ContextMProphetOnFolder for " + diaFolder.getAbsolutePath());
 
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
 
 
 		// Score features in the .dia file against the library, split the results
 		try {
-			ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
-			String featureFileName = baseName.replaceAll("\\.txt$", "");
+			if (diaFilesInFolder != null) {
+				for (File diaFile : diaFilesInFolder) {
+				
+					// Ignore files that do not end in .dia 
+					if (!diaFile.isFile() || !diaFile.getName().endsWith(".dia")) {
+						continue;
+					}
 
-			File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
-			File referenceFeatureFile = new File(featureFileName + "_reference.features.txt");
+		//			String currentDiaFilePath = diaFile.getAbsolutePath();
+					String diaName = diaFile.getName();
+					String baseName = diaName.replaceFirst("\\.dia$", "");
+					
+					File massListFile = new File(diaFolder, baseName + ".txt");
+					String massListPath = massListFile.getAbsolutePath();
+					
+					System.out.println("Processesing " + diaFile.getName());
+					
+					if (!massListFile.exists()) {
+						System.out.println("Skipping " + diaFile.getName() + " because mass list was not found.");
+						continue;
+						
+					}
 
-			MProphetExecutionData backgroundData = makeMProphetExecutionData(backgroundFeatureFile, fasta, params, ".pep");
-			MProphetExecutionData referenceData = makeMProphetExecutionData(referenceFeatureFile, fasta, params, ".pep");
+					ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+					String featureFileName = baseName.replaceAll("\\.txt$", "");
 
-			float peptideFDRThreshold = 0.01f;
-			int seed = 1;
-			int round = 1;
+					File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
+					File referenceFeatureFile = new File(featureFileName + "_reference.features.txt");
 
-			MProphetResult backgroundMProphetResult = MProphetReiter.executeMProphetTSV(backgroundData, peptideFDRThreshold, seed, params.getAAConstants(), round);
-			LinearDiscriminantAnalysis backgroundLDA = backgroundMProphetResult.getLDA();
+					MProphetExecutionData backgroundData = makeMProphetExecutionData(backgroundFeatureFile, fasta, params, ".pep");
+					MProphetExecutionData referenceData = makeMProphetExecutionData(referenceFeatureFile, fasta, params, ".pep");
 
-			// 	Use the background LDA model on the reference feature file without retraining
-			MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
+					float peptideFDRThreshold = 0.01f;
+					int seed = 1;
+					int round = 1;
 
-			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
-			System.out.println("Finished scoring peptides with background-trained lda model. "
-					+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
+					MProphetResult backgroundMProphetResult = MProphetReiter.executeMProphetTSV(backgroundData, peptideFDRThreshold, seed, params.getAAConstants(), round);
+					LinearDiscriminantAnalysis backgroundLDA = backgroundMProphetResult.getLDA();
 
+					// 	Use the background LDA model on the reference feature file without retraining
+					MProphetResult referenceMProphetResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, peptideFDRThreshold, backgroundLDA, params.getAAConstants());
+
+					System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + referenceFeatureFile.getAbsolutePath());
+					System.out.println("Finished scoring peptides with background-trained lda model. "
+							+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
+				}
+
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
