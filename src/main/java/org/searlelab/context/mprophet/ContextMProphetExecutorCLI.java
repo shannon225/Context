@@ -19,12 +19,12 @@ public class ContextMProphetExecutorCLI {
 		ALLOWED_ARGUMENTS.add("--dia");
 		ALLOWED_ARGUMENTS.add("--mass-list");
 		ALLOWED_ARGUMENTS.add("--mode");
-		ALLOWED_ARGUMENTS.add("--dia-folder");
+//		ALLOWED_ARGUMENTS.add("--dia-folder");
 	}
 
 	public static void main(String[] args) {
 		try {
-			if (args.length < 5 || containsHelpFlag(args)) {
+			if (args.length < 3 || containsHelpFlag(args)) {
 				printUsage();
 				System.exit(1);
 				return;
@@ -35,25 +35,35 @@ public class ContextMProphetExecutorCLI {
 			String libraryPath = requireArguments(arguments, "--library");
 			String fastaPath = requireArguments(arguments, "--fasta");
 			String diaFilePath = requireArguments(arguments, "--dia");
-			String massListPath = requireArguments(arguments, "--mass-list");
 			String mode = arguments.getOrDefault("--mode", MODE_CONTEXT).toLowerCase();
 
 			validateReadableFile("Library", libraryPath);
 			validateReadableFile("FASTA", fastaPath);
-			validateReadableFile("DIA", diaFilePath);
-			validateReadableFile("Mass list", massListPath);
 
 			if (MODE_CONTEXT.equals(mode)) {
+				
+				String massListPath = requireArguments(arguments, "--mass-list");
+				validateReadableFile("Mass list", massListPath);
+				validateReadableFile("DIA", diaFilePath);
+
 				ContextMProphetExecutor.executeContextMProphet(libraryPath, fastaPath, diaFilePath, massListPath);
+				
 			} else if (MODE_FOLDER.equals(mode)) {
-				String diaFolderPath = requireArguments(arguments, "--dia-folder");
+				
+				String diaFolderPath = requireArguments(arguments, "--dia");
 				File diaFolder = validateDirectory("DIA folder", diaFolderPath);
 
-				ContextMProphetExecutor.executeContextMProphetOnFolder(libraryPath, fastaPath, diaFilePath, massListPath, diaFolder);
+				ContextMProphetExecutor.executeContextMProphetOnFolder(libraryPath, fastaPath, diaFolder);
+				
 			} else if (MODE_MPROPHET.equals(mode)) {
+				
 				File diaFolder = new File(diaFilePath).getAbsoluteFile().getParentFile();
+				String massListPath = requireArguments(arguments, "--mass-list");
+				validateReadableFile("Mass list", massListPath);
+				validateReadableFile("DIA", diaFilePath);
 
 				ContextMProphetExecutor.executeMProphet(libraryPath, fastaPath, diaFilePath, massListPath, diaFolder);
+				
 			} else {
 				throw new IllegalArgumentException(
 						"Unknown mode '" + mode + "'. Expected context, folder, or mprophet.");
