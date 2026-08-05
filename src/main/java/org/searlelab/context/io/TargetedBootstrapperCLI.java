@@ -19,10 +19,6 @@ public class TargetedBootstrapperCLI {
 
 		String libraryPath = args[0];
 		String rawFilePath = args[1];
-//		Path mapOutputPath = Paths.get(args[2]);
-
-		// Path rawFile = Paths.get(rawFilePath);
-		// String baseName = rawFilePath.replaceFirst("\\.dia$", "");
 
 		// Default parameters
 		int seed = DEFAULT_MAX_SEED;
@@ -45,6 +41,10 @@ public class TargetedBootstrapperCLI {
 
 		if (args.length >= 6) {
 			halfWindowWidthMz = Double.parseDouble(args[5]);
+		}
+		
+		if (args.length >= 7) {
+			System.out.println("There are too many arguments, retry with a max of 7 arguments.");
 		}
 
 		TargetedBootstrapper bootstrapper = new TargetedBootstrapper();

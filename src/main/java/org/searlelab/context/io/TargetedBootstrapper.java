@@ -223,7 +223,6 @@ public class TargetedBootstrapper {
 	}
 
 	// Second function - Uses the IsolationWindow List to mask the raw data
-	@SuppressWarnings("unused")
 	public EncyclopeDIAFile writeMaskedFile(ArrayList<IsolationWindow> isolationWindows, int i, String diaFilePath,
 			Path outputPath, double halfWindowWidthMz) throws Throwable {
 
@@ -261,14 +260,13 @@ public class TargetedBootstrapper {
 					double mzStop = windowMz + halfWindowWidthMz;
 					Range mzRange = new Range(mzStart, mzStop);
 
-					ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile
-							.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
+					ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
 					ArrayList<FragmentScan> matchingScans = new ArrayList<>();
 
 					// Add Fragment Scans
 					for (FragmentScan scan : fragmentScansFromWindow) {
 						double scanMz = scan.getPrecursorMZ();
-						float scanRT = scan.getScanStartTime();
+//						float scanRT = scan.getScanStartTime();
 						int scanIndex = scan.getSpectrumIndex();
 						if (mzRange.contains(scanMz) && !addedFragments.contains(scanIndex)) {
 							matchingScans.add(scan);
@@ -288,6 +286,7 @@ public class TargetedBootstrapper {
 					// Add Precursor Scans
 					ArrayList<PrecursorScan> precursorScanFromWindow = rawLibraryFile.getPrecursors(windowStartTime,
 							windowStopTime);
+					
 					ArrayList<PrecursorScan> matchingPrecursors = new ArrayList<>();
 
 					for (PrecursorScan precursor : precursorScanFromWindow) {
@@ -303,7 +302,10 @@ public class TargetedBootstrapper {
 
 				}
 				maskedFile.setFileName(rawFile.getName(), null, rawFile.getAbsolutePath());
-				maskedFile.addMetadata(diaFilePath, diaFilePath);
+				maskedFile.addMetadata(rawLibraryFile.getMetadata());
+	//			maskedFile.addMetadata(diaFilePath, diaFilePath);
+				maskedFile.setFractionNames(rawLibraryFile.getFractionNames());
+		
 			}
 		} catch (IOException e) {
 			System.out.println("Unable to open raw file.");
@@ -348,6 +350,7 @@ public class TargetedBootstrapper {
 		}
 	}
 
+	@SuppressWarnings("unused") 
 	private void writeTargetDecoyMap(HashMap<String, String> targetDecoyMap, Path outputPath) throws IOException {
 
 		try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
