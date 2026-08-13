@@ -74,7 +74,6 @@ public class ContextFeatureScorer {
 		return null;
 	}
 
-
 	private static String cleanPeptideSequence(String sequence) {
 		if (sequence == null) return "";
 
@@ -160,7 +159,6 @@ public class ContextFeatureScorer {
 				ScoredFeature currentBest = bestFeatureByPeptide.get(sequence);
 
 				// Take the peptide with a higher primary score and place it on a new list
-
 				if (currentBest == null || feature.getPrimary() > currentBest.getPrimary()) {
 					bestFeatureByPeptide.put(sequence, feature);
 				}
@@ -194,13 +192,10 @@ public class ContextFeatureScorer {
 			IsolationWindow matchingWindow = findMatchingMassListWindow(feature, targetWindows);
 
 			boolean isOnMassList = matchingWindow != null;
-	//		boolean isMassListDecoy = isOnMassList && matchingWindow.isDecoy();
 			boolean isBackground = !isOnMassList;
 
 			ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(), feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(), feature.getOriginalLine(), isBackground);
 			partitionedFeatures.add(annotatedFeature);
-
-			//			System.out.println("Features are being read, sequence for this feature is " + cleanPeptideSequence(feature.getSequence()));
 
 			if (isOnMassList) {
 				referenceFeatures.add(feature); 
@@ -212,11 +207,6 @@ public class ContextFeatureScorer {
 		writeScoredFeatures(backgroundOutput, backgroundFeatures, header);
 
 		System.out.println("Reference target features: " + referenceFeatures.size());
-		//		System.out.println("Background target features: " + backgroundFeatures.size());
-		//		System.out.println("Reference decoy features: " + referenceDecoyFeatures.size());
-		//		System.out.println("Background decoy features: " + backgroundDecoyFeatures.size());
 		return partitionedFeatures;
 	}
-
-
 }

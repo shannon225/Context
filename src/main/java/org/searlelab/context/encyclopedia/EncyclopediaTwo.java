@@ -28,7 +28,6 @@ import org.searlelab.msrawjava.model.Range;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import org.searlelab.context.encyclopedia.SearchToBLIB;
 import org.searlelab.context.encyclopedia.SearchToBLIB.OutputFormat;
 
 import edu.washington.gs.maccoss.encyclopedia.CLIConverter;

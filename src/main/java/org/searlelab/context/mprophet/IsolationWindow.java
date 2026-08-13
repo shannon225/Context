@@ -11,7 +11,6 @@ public class IsolationWindow {
 	private boolean isDecoy;
 	private String compound;
 	private byte charge;
-//	private String peptide;
 
 	
 	// Constructor

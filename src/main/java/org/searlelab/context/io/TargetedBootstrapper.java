@@ -37,7 +37,8 @@ public class TargetedBootstrapper {
 		AminoAcidConstants aaConstants = new AminoAcidConstants();
 
 		for (int seed = 1; seed <= maxSeed; seed++) {
-			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,halfWindowWidthRT, halfWindowWidthMz);
+			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,
+					halfWindowWidthRT, halfWindowWidthMz);
 
 			Path maskedFileOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.dia");
 			Path assayOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.txt");
@@ -48,19 +49,14 @@ public class TargetedBootstrapper {
 		}
 	}
 
-	// First function - Randomly Selects Precursors from a library and compiles them
-	// into a list
-
+	// First function - Randomly Selects Precursors from a library, places on a list
 	public ArrayList<IsolationWindow> selectMask(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
 			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz)
-					throws IOException, SQLException, Throwable {
+			throws IOException, SQLException, Throwable {
 
 		// START TIMER 1
 		long startTime = System.nanoTime();
 		ArrayList<IsolationWindow> isolationWindows = new ArrayList<>();
-
-		// For mapping targets and decoys later
-	//	HashMap<String, String> targetDecoyOriginMap = new HashMap<>();
 
 		// Set parameters before the loop
 		int randomValue = 1 + i; // Add haliburton's number to get a random number
@@ -76,7 +72,6 @@ public class TargetedBootstrapper {
 
 		// Randomly select precursors loop
 		try {
-
 			// Load all entries
 			ArrayList<LibraryEntry> entries = library.getAllEntries(false, aaConstants);
 
@@ -86,12 +81,9 @@ public class TargetedBootstrapper {
 				int index = Math.abs(randomValue) % entries.size();
 				simulatedAssaySet.add(index);
 			}
-			
-			
+
 			// While loop for selecting targets and decoys
-
 			while (targetSequencesSelected.size() < numberOfPeptides) {
-
 				for (Integer index : simulatedAssaySet) {
 
 					// Retrieve the library entry at the random index
@@ -114,14 +106,13 @@ public class TargetedBootstrapper {
 
 					// Add target sequences to the isolationWindows object
 					if (!targetSequencesSelected.contains(sequence) && !decoySequencesSelected.contains(sequence)) {
-
 						// Mark the target as not having a decoy
 						boolean decoyFound = false;
 
 						// m/z tolerance for decoys
 						double mzTolerancePPM = 10;
 
-						while (!decoyFound && mzTolerancePPM < 320) { 
+						while (!decoyFound && mzTolerancePPM < 320) {
 							double mzToleranceDa = targetMz * mzTolerancePPM / 1_000_000;
 							double upperMz = targetMz + mzToleranceDa;
 							double lowerMz = targetMz - mzToleranceDa;
@@ -132,7 +123,6 @@ public class TargetedBootstrapper {
 									aaConstants);
 
 							// Loop to find entrapment decoys at a different window from target peptides
-
 							for (LibraryEntry candidate : candidateDecoys) {
 
 								float candidateRT = candidate.getRetentionTime();
@@ -140,14 +130,13 @@ public class TargetedBootstrapper {
 
 								// If the candidate RT is outside of the target RT range, and the decoy sequence
 								// is different from the target, then add the decoy
-								if (!rtRange.contains(candidateRT) 
-										&& !decoySequence.equals(sequence)
+								if (!rtRange.contains(candidateRT) && !decoySequence.equals(sequence)
 										&& !targetSequencesSelected.contains(sequence)
-										&& !decoySequencesSelected.contains(decoySequence) // checks if the decoy has been used
-										&& !targetSequencesSelected.contains(decoySequence) // checks if decoy is also a target
-										&& !discardedTDPairs.containsValue(sequence)  // checks if target was used in target-decoy pair 
-										&& !discardedTDPairs.containsKey(decoySequence)) {  // checks if decoy was used in target-decoy pair
-									
+										&& !decoySequencesSelected.contains(decoySequence) // has the decoy has been used?
+										&& !targetSequencesSelected.contains(decoySequence) // is the decoy is also a target?
+										&& !discardedTDPairs.containsValue(sequence) // is the target used in target-decoy pair
+										&& !discardedTDPairs.containsKey(decoySequence)) { // checks if decoy was used in target-decoy pair
+
 									double decoyMz = candidate.getPrecursorMZ();
 									byte decoyCharge = candidate.getPrecursorCharge();
 
@@ -159,8 +148,7 @@ public class TargetedBootstrapper {
 
 									decoyFound = true;
 
-									//  Add the target once a matching decoy is found
-
+									// Add the target once a matching decoy is found
 									IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin,
 											rtMax, false);
 									isolationWindows.add(window);
@@ -187,45 +175,38 @@ public class TargetedBootstrapper {
 							}
 						} // end finding decoy loop
 					} else {
-						
+
 					}
-				} // end indexing through the HashSet loop 
-				
+				} // end indexing through the HashSet loop
+
 				int peptidesLeftToSelect = simulatedAssaySet.size() - targetSequencesSelected.size();
 				int newAssaySetSize = numberOfPeptides + peptidesLeftToSelect;
 
-  			  while (newAssaySetSize <entries.size() && simulatedAssaySet.size() < newAssaySetSize) {
+				while (newAssaySetSize < entries.size() && simulatedAssaySet.size() < newAssaySetSize) {
 					randomValue = RandomGenerator.randomInt(randomValue);
 					int index = Math.abs(randomValue) % entries.size();
 					simulatedAssaySet.add(index);
 				}
 			}
-			
-			
 		} catch (Exception e) {
-			System.out.println("There was an error with selecting precursors. Check the file path. If it fails again, you may not have enough peptides in your dataset to bootstrap a synthetic assay.");
+			System.out.println(
+					"There was an error with selecting precursors. Check the file path. If it fails again, you may not have enough peptides in your dataset to bootstrap a synthetic assay.");
 			throw e;
 		} finally {
-	//		writeTargetDecoyMap(targetDecoyOriginMap, mapOutputPath);
-
 			System.out.println(isolationWindows.size() + " Precursors marked for extraction.");
-			
 			library.close();
-
 		}
 
 		// END TIMER 1
 		long endTime = System.nanoTime();
 		long duration = endTime - startTime;
 		System.out.println("randomlySelectPrecursors(): Time taken (ms) : " + duration / 1_000_000);
-
 		return isolationWindows;
 	}
 
 	// Second function - Uses the IsolationWindow List to mask the raw data
 	public EncyclopeDIAFile writeMaskedFile(ArrayList<IsolationWindow> isolationWindows, int i, String diaFilePath,
 			Path outputPath, double halfWindowWidthMz) throws Throwable {
-
 		// START TIMER 2
 		long startTime = System.nanoTime();
 
@@ -260,13 +241,13 @@ public class TargetedBootstrapper {
 					double mzStop = windowMz + halfWindowWidthMz;
 					Range mzRange = new Range(mzStart, mzStop);
 
-					ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
+					ArrayList<org.searlelab.msrawjava.model.FragmentScan> fragmentScansFromWindow = rawLibraryFile
+							.getStripes(windowMz, windowStartTime, windowStopTime, sqrt);
 					ArrayList<FragmentScan> matchingScans = new ArrayList<>();
 
 					// Add Fragment Scans
 					for (FragmentScan scan : fragmentScansFromWindow) {
 						double scanMz = scan.getPrecursorMZ();
-//						float scanRT = scan.getScanStartTime();
 						int scanIndex = scan.getSpectrumIndex();
 						if (mzRange.contains(scanMz) && !addedFragments.contains(scanIndex)) {
 							matchingScans.add(scan);
@@ -280,13 +261,14 @@ public class TargetedBootstrapper {
 							dutyCycleMap.put(entry.getKey(), entry.getValue());
 						}
 					}
+
 					maskedFile.setRanges(dutyCycleMap);
 					maskedFile.addStripe(matchingScans);
 
 					// Add Precursor Scans
 					ArrayList<PrecursorScan> precursorScanFromWindow = rawLibraryFile.getPrecursors(windowStartTime,
 							windowStopTime);
-					
+
 					ArrayList<PrecursorScan> matchingPrecursors = new ArrayList<>();
 
 					for (PrecursorScan precursor : precursorScanFromWindow) {
@@ -299,13 +281,10 @@ public class TargetedBootstrapper {
 						}
 					}
 					maskedFile.addPrecursor(matchingPrecursors);
-
 				}
 				maskedFile.setFileName(rawFile.getName(), null, rawFile.getAbsolutePath());
 				maskedFile.addMetadata(rawLibraryFile.getMetadata());
-	//			maskedFile.addMetadata(diaFilePath, diaFilePath);
 				maskedFile.setFractionNames(rawLibraryFile.getFractionNames());
-		
 			}
 		} catch (IOException e) {
 			System.out.println("Unable to open raw file.");
@@ -331,6 +310,7 @@ public class TargetedBootstrapper {
 		try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
 			writer.write("Compound\tFormula\tAdduct\tm/z\tz\tRT Time (min)\tWindow (min)\tisDecoy");
 			writer.newLine();
+
 			for (IsolationWindow window : isolationWindows) {
 				String compound = window.getCompound();
 				double targetMz = window.getTargetMz();
@@ -343,14 +323,13 @@ public class TargetedBootstrapper {
 				writer.write(compound + "\t" + "\t" + "(no adduct)" + "\t" + targetMz + "\t" + charge + "\t"
 						+ rtCenterMin + "\t" + windowMin + "\t" + isDecoy);
 				writer.newLine();
-
 			}
 		} catch (Exception e) {
 			throw e;
 		}
 	}
 
-	@SuppressWarnings("unused") 
+	@SuppressWarnings("unused")
 	private void writeTargetDecoyMap(HashMap<String, String> targetDecoyMap, Path outputPath) throws IOException {
 
 		try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
@@ -368,6 +347,5 @@ public class TargetedBootstrapper {
 		} catch (Exception e) {
 			throw e;
 		}
-
 	}
 }

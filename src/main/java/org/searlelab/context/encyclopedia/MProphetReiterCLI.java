@@ -34,5 +34,4 @@ public class MProphetReiterCLI {
 		
 		MProphetReiter.executeMProphetTSV(data, threshold, seed, params.getAAConstants(), 1);
 	}
-	
 }

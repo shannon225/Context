@@ -43,10 +43,7 @@ public class ScoredFeature {
 		this.sequence=sequence;
 		this.protein=protein;
 		this.originalLine=originalLine;
-	//	this.isBackground=isBackground; 
-
 	}
-
 
 	public double getMz() {
 		return mz;
@@ -59,21 +56,27 @@ public class ScoredFeature {
 	public boolean isDecoy() {
 		return isDecoy;
 	}
+	
 	public float getPrimary() {
 		return primary;
 	}
+	
 	public float getRetentionTime() {
 		return retentionTime;
 	}
+	
 	public String getSequence() {
 		return sequence;
 	}
+	
 	public String getProtein() {
 		return protein;
 	}
+	
 	public String getOriginalLine() {
 		return originalLine;
 	}
+	
 	public boolean isBackground() {
 		return isBackground;
 	}

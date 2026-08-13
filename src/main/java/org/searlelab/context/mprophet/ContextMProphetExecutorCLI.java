@@ -19,7 +19,6 @@ public class ContextMProphetExecutorCLI {
 		ALLOWED_ARGUMENTS.add("--dia");
 		ALLOWED_ARGUMENTS.add("--mass-list");
 		ALLOWED_ARGUMENTS.add("--mode");
-//		ALLOWED_ARGUMENTS.add("--dia-folder");
 	}
 
 	public static void main(String[] args) {
@@ -94,10 +93,8 @@ public class ContextMProphetExecutorCLI {
 			if (arguments.containsKey(flag)) {
 				throw new IllegalArgumentException("Argument supplied more than once: " + flag + ".");
 			}
-
 			arguments.put(flag, args[++index]);
 		}
-
 		return arguments;
 	}
 

@@ -55,7 +55,6 @@ public class MProphetReiter implements Runnable {
 		return prophet.getResult();
 	}
 	
-	
 	public void runWithModel(LinearDiscriminantAnalysis lda) {
 		File file = settings.getInputTSV();
 		
@@ -68,6 +67,7 @@ public class MProphetReiter implements Runnable {
 			this.error = t;
 		}
 	}
+	
 	public static MProphetResult executeMProphetTSVWithModel(MProphetExecutionData commandData, float threshold, LinearDiscriminantAnalysis lda, AminoAcidConstants aaConstants) throws IOException, FileNotFoundException, UnsupportedEncodingException, InterruptedException {
 		MProphetReiter prophet = new MProphetReiter(commandData, threshold, 1, aaConstants);
 		prophet.runWithModel(lda);
@@ -77,7 +77,6 @@ public class MProphetReiter implements Runnable {
 	@Override
 	public void run() {
 		File file=settings.getInputTSV();
-
 		try {
 			MProphetDataset data = MProphetFeatureReader.parseFeatureFile(file, settings);
 			result = calculateProbabilities(data, seed);
@@ -261,9 +260,9 @@ public class MProphetReiter implements Runnable {
 					targetWriter.println(scoredData.getData().getId()+"\t"+score+"\t"+qValue+"\t"+posteriorErrorProb+"\t"+"-."+scoredData.getData().getSequence()+".-"+"\t"+scoredData.getData().getProtein());
 				}
 			}
-			targetWriter.println("pi_0="+pi0);
-			decoyWriter.println("pi_0="+pi0);
-
+	
+			targetWriter.println("pi_0="+finalData.y);
+			decoyWriter.println("pi_0="+finalData.y);
 			targetWriter.flush();
 			decoyWriter.flush();
 			targetWriter.close();
