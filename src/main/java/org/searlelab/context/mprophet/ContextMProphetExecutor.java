@@ -55,15 +55,12 @@ public class ContextMProphetExecutor {
 
 	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, File diaFolder) {
 		File fasta = new File(fastaPath);
-		//	File diaFile = new File(diaFilePath);
 		File library = new File(libraryPath);
-	//	String baseName = diaFilePath.replaceFirst("\\.dia$", "");
 		File[] diaFilesInFolder = diaFolder.listFiles();
-
+		
 		System.out.println("Running ContextMProphetOnFolder for " + diaFolder.getAbsolutePath());
-
+		
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
-
 
 		// Score features in the .dia file against the library, split the results
 		try {
@@ -75,13 +72,12 @@ public class ContextMProphetExecutor {
 						continue;
 					}
 
-		//			String currentDiaFilePath = diaFile.getAbsolutePath();
 					String diaName = diaFile.getName();
 					String baseName = diaName.replaceFirst("\\.dia$", "");
 					
 					File massListFile = new File(diaFolder, baseName + ".txt");
 					String massListPath = massListFile.getAbsolutePath();
-					
+	
 					System.out.println("Processesing " + diaFile.getName());
 					
 					if (!massListFile.exists()) {
@@ -113,15 +109,11 @@ public class ContextMProphetExecutor {
 					System.out.println("Finished scoring peptides with background-trained lda model. "
 							+ "\nReference passing peptides: " + referenceMProphetResult.getPassingPeptides().size());
 				}
-
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
-
-
 
 	public static void executeMProphet(String libraryPath, String fastaPath, String diaFilePath, String massListPath, File diaFolder) {
 		File fasta = new File(fastaPath);
@@ -131,7 +123,6 @@ public class ContextMProphetExecutor {
 		String baseName = diaFilePath.replaceFirst("\\.dia$", "");
 
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
-
 
 		// Score features in the .dia file against the library, split the results
 		try {
@@ -149,14 +140,11 @@ public class ContextMProphetExecutor {
 			MProphetResult mprophetResult = MProphetReiter.executeMProphetTSV(featureData, peptideFDRThreshold, seed, params.getAAConstants(), round);
 
 			System.out.println("The lda model has been trained on background feature. Now we'll use reference features from " + featureFile.getAbsolutePath());
-			//			System.out.println("Background passing peptides: " + backgroundMProphetResult.getPassingPeptides().size());
 			System.out.println("Finished scoring peptides with background-trained lda model. "
 					+ "\nReference passing peptides: " + mprophetResult.getPassingPeptides().size());
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
 
 

@@ -67,7 +67,6 @@ import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetExec
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetReiter;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetResult;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorExecutionData;
-//import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorExecutor;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorPeptide;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorProteinGroup;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.phospho.LocalizationDataToTSVConsumer;

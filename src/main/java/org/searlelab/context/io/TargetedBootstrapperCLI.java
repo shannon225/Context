@@ -1,8 +1,5 @@
 package org.searlelab.context.io;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 public class TargetedBootstrapperCLI {
 	private static final int DEFAULT_MAX_SEED = 1;
 	private static final int DEFAULT_NUMBER_OF_PEPTIDES = 100;
