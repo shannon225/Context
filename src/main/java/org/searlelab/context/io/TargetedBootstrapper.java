@@ -51,7 +51,7 @@ public class TargetedBootstrapper {
 	}
 
 	public ArrayList<IsolationWindow> selectTargets(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
-			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz) throws Exception {
+			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz, HashSet<String> excludedTargetSequences) throws Exception {
 
 		ArrayList<IsolationWindow> targetWindows = new ArrayList<>();
 
@@ -72,6 +72,10 @@ public class TargetedBootstrapper {
 			System.out.println("There are " + entries.size() + " entries from the library.");
 //			System.out.println("The highest m/z is " + Collections.max(entries).getPrecursorMZ());
 //			System.out.println("The lowest m/z is " + Collections.min(entries).getPrecursorMZ());
+			
+			if (numberOfPeptides > entries.size()) {
+				throw new IllegalArgumentException("The requested number of targets is larger than the number of library entries. Select a smaller number of peptides to put into each assay.");
+			}
 
 			// Select target precursors
 			while (simulatedAssaySet.size() < numberOfPeptides) {
@@ -90,7 +94,7 @@ public class TargetedBootstrapper {
 					
 					// Retrieve the library entry at the random index
 					LibraryEntry entry = entries.get(index);
-
+					
 					// Get the m/z, RT and sequence
 					double targetMz = entry.getPrecursorMZ();
 					float rtCenter = entry.getRetentionTimeInSec();
@@ -101,7 +105,7 @@ public class TargetedBootstrapper {
 					float rtMin = (float) (rtCenter - (60f * (halfWindowWidthRT)));
 					float rtMax = (float) (rtCenter + (60f * (halfWindowWidthRT)));
 
-					if (!targetSequencesSelected.contains(sequence)) {
+					if (!targetSequencesSelected.contains(sequence) && !excludedTargetSequences.contains(sequence)) {
 
 						IsolationWindow window = new IsolationWindow(sequence, targetMz, charge, rtMin, rtMax, false);
 						targetWindows.add(window);
@@ -113,8 +117,8 @@ public class TargetedBootstrapper {
 				
 				if (targetSequencesSelected.size() < numberOfPeptides) {
 					
-					if (numberOfPeptides >= entries.size()) {
-						throw new IllegalStateException("The library does not contain enough unique peptide sequence to bootstrap from. Select a new library");
+					if (simulatedAssaySet.size() >= entries.size()) {
+						throw new IllegalStateException("The library does not contain enough unique peptides to bootstrap from the assay. Select a new library");
 					}
 					
 					int previousSetSize = simulatedAssaySet.size(); 
@@ -138,7 +142,7 @@ public class TargetedBootstrapper {
 		return targetWindows;
 	}
 
-	public ArrayList<IsolationWindow> selectDecoys(ArrayList<IsolationWindow> targetWindows, AminoAcidConstants aaConstants, int i, String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz) throws Exception {
+	public ArrayList<IsolationWindow> selectDecoys(ArrayList<IsolationWindow> targetWindows, AminoAcidConstants aaConstants, int i, String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz, ArrayList<IsolationWindow> unmatchedTargets) throws Exception {
 
 		ArrayList<IsolationWindow> decoyWindows = new ArrayList<IsolationWindow>();
 		
@@ -155,7 +159,6 @@ public class TargetedBootstrapper {
 				targetSequencesSelected.add(targetWindow.getCompound());
 			}
 			
-			
 			for (IsolationWindow targetWindow : targetWindows) {
 
 				// Get the m/z, RT and sequence for targets
@@ -165,7 +168,7 @@ public class TargetedBootstrapper {
 				boolean decoyFound = false;
 				double mzTolerancePPM = 10;
 				
-				while (!decoyFound && mzTolerancePPM <= 320) {
+				while (!decoyFound && mzTolerancePPM <= 2000) {
 					double mzToleranceDa = targetMz * mzTolerancePPM / 1_000_000;
 					double upperMz = targetMz + mzToleranceDa;
 					double lowerMz = targetMz - mzToleranceDa;
@@ -177,8 +180,8 @@ public class TargetedBootstrapper {
 					// Loop to find entrapment decoys at a different window from target peptides
 					for (LibraryEntry candidate : candidateDecoys) {
 						float candidateRT = candidate.getRetentionTime();
-						float candidateMinRT = candidateRT - 300f;
-						float candidateMaxRT = candidateRT + 300f;
+						float candidateMinRT = candidateRT - 240f;
+						float candidateMaxRT = candidateRT + 240f;
 						
 						String decoySequence = candidate.getAccuratePeptideModSeq(aaConstants);
 						boolean overlapsAnyTarget = false;
@@ -186,8 +189,8 @@ public class TargetedBootstrapper {
 						
 					for (IsolationWindow comparisonTarget : targetWindows) {
 						// Calculate target windows + buffer range - targets will be selected outside of this window
-						float minTargetRTWithBuffer = comparisonTarget.getRtMin() - 300f;
-						float maxTargetRTWithBuffer = comparisonTarget.getRtMax() + 300f; 
+						float minTargetRTWithBuffer = comparisonTarget.getRtMin() - 60f;
+						float maxTargetRTWithBuffer = comparisonTarget.getRtMax() + 60f;
 						
 						boolean overlapsThisTarget = candidateMinRT <= maxTargetRTWithBuffer && candidateMaxRT >= minTargetRTWithBuffer;
 						
@@ -231,7 +234,9 @@ public class TargetedBootstrapper {
 				}
 				
 				if (!decoyFound) {
-					throw new Exception("No valid decoy was found per target " + targetSequence + " after searching up to " + mzTolerancePPM + " ppm.");
+					unmatchedTargets.add(targetWindow);
+					System.out.println("No valid decoy was found per target " + targetSequence + " after searching up to " + mzTolerancePPM + " ppm.");
+					continue;
 				}
 			}
 		} catch (Exception e) {
@@ -251,8 +256,43 @@ public class TargetedBootstrapper {
 
 		// START TIMER 1
 		long startTime = System.nanoTime();
-		ArrayList<IsolationWindow> targetWindows = selectTargets(numberOfPeptides, aaConstants, i, libraryPath, halfWindowWidthRT, halfWindowWidthMz);
-		ArrayList<IsolationWindow> decoyWindows = selectDecoys(targetWindows, aaConstants, i, libraryPath, halfWindowWidthRT, halfWindowWidthMz);
+		HashSet<String> rejectedTargetSequences = new HashSet<>();
+		
+		ArrayList<IsolationWindow> targetWindows = selectTargets(numberOfPeptides, aaConstants, i, libraryPath, halfWindowWidthRT, halfWindowWidthMz, rejectedTargetSequences);
+		ArrayList<IsolationWindow> decoyWindows;
+		
+		int replacementRound = 0; 
+		
+		while(true) {
+			ArrayList<IsolationWindow> unmatchedTargets = new ArrayList<>();
+			
+			// Select deoys
+			decoyWindows = selectDecoys(targetWindows, aaConstants, i, libraryPath, halfWindowWidthRT, halfWindowWidthMz, unmatchedTargets);
+		
+			if (unmatchedTargets.isEmpty()) {
+				break;
+			}
+			
+			// Remove targets that could not find appropriate decoys
+			for (IsolationWindow unmatchedTarget : unmatchedTargets) {
+				targetWindows.remove(unmatchedTarget);
+				
+				rejectedTargetSequences.add(unmatchedTarget.getCompound());
+			}
+			
+			HashSet<String> unavailableTargetSequences = new HashSet<>(rejectedTargetSequences);
+			// Exclude the targets that are still in the assay so they can't be selected again 
+			for (IsolationWindow existingTarget : targetWindows) {
+				unavailableTargetSequences.add(existingTarget.getCompound());
+			}
+			
+			int replacementsNeeded = numberOfPeptides - targetWindows.size();
+			replacementRound++;
+			
+			ArrayList<IsolationWindow> replacementTargets = selectTargets(replacementsNeeded, aaConstants, i + replacementRound, libraryPath, halfWindowWidthRT, halfWindowWidthMz, unavailableTargetSequences);
+			
+			targetWindows.addAll(replacementTargets);
+		}
 		
 		if (targetWindows.size() !=decoyWindows.size() ) {
 			throw new IllegalStateException("The number of targets does not match the number of decoys");
@@ -265,9 +305,10 @@ public class TargetedBootstrapper {
 			isolationWindows.add(decoyWindows.get(index));
 		}
 		
+		System.out.println(isolationWindows.size() + " total target and decoy windows selected.");
 		
-	//	boolean overlaps = candidateMinRT <= maxRTWindowWithBuffer && candidateMaxRT >= minRTWindowWithBuffer;
-
+		long endTime = System.nanoTime();
+		System.out.println("selectMask(): Time taken (ms): " + (endTime-startTime) / 1_000_000);
 		// Randomly select precursors loop
 		return isolationWindows;
 }
