@@ -52,7 +52,7 @@ public class ContextMProphetExecutor {
 		}
 
 	}
-
+ // TODO - This function only runs MProphet on the folder, not ContextMProphet
 	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, File diaFolder) {
 		File fasta = new File(fastaPath);
 		File library = new File(libraryPath);
