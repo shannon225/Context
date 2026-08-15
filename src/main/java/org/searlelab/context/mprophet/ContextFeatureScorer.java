@@ -21,6 +21,7 @@ import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryInterface;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.EmptyProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.ProgressIndicator;
+import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorPeptide;
 
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
 import org.searlelab.context.encyclopedia.SearchToBLIB;
@@ -94,14 +95,6 @@ public class ContextFeatureScorer {
 	}
 
 	// Changed isFeatureOnMassList to only check for peptide sequence equivalence, not for mass, charge and RT equivalence. I don't think is needed, but keeping for now. 
-	private static byte parseCharge(String[] columns) {
-		if (Integer.parseInt(columns[23])==1) return 1;
-		if (Integer.parseInt(columns[24])==1) return 2;
-		if (Integer.parseInt(columns[25])==1) return 3;
-		if (Integer.parseInt(columns[26])==1) return 4;
-
-		throw new IllegalArgumentException("Charge was unable to be detected from the processed features. Check input file.");
-	}
 
 	public static ArrayList<ScoredFeature> scoreFeatures(File library, File rawFile, File fasta, String baseName,
 			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
@@ -145,7 +138,7 @@ public class ContextFeatureScorer {
 				String columns[] = line.split("\t", -1);
 
 				double mz = Double.parseDouble(columns[27]);
-				byte featureCharge = parseCharge(columns);
+				byte featureCharge = PercolatorPeptide.getCharge(columns[0]);
 				boolean isDecoy = Integer.parseInt(columns[1]) == -1;
 				float primary = Float.parseFloat(columns[3]);
 				float retentionTime = Float.parseFloat(columns[29]);
