@@ -52,7 +52,7 @@ public class ContextFeatureScorerTest {
 			ArrayList<ScoredFeature> partitionedFeatures = ContextFeatureScorer.scoreFeatures(library, rawFile, fasta, baseName, massListPath);
 			assertNotNull(partitionedFeatures);
 			
-			System.out.println("Last feature in the list: " + partitionedFeatures.getLast() + " peptides remaining.");
+			System.out.println("Last feature in the list: " + partitionedFeatures.getLast());
 			
 			// Verify that the expected output files were created
 		Path referenceOutput = Paths.get(baseName + "_reference.features.txt");
