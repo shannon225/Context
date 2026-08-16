@@ -52,7 +52,7 @@ public class ContextMProphetExecutor {
 		}
 
 	}
- // TODO - This function prints the output to the context repo folder, and needs to print the output to an output folder
+
 	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, File diaFolder) {
 		File fasta = new File(fastaPath);
 		File library = new File(libraryPath);
@@ -129,7 +129,7 @@ public class ContextMProphetExecutor {
 			ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
-			File featureFile = new File(featureFileName + "_mprophet.features.txt");
+			File featureFile = new File(featureFileName + ".features.txt");
 
 			MProphetExecutionData featureData = makeMProphetExecutionData(featureFile, fasta, params, ".pep");
 
@@ -161,8 +161,7 @@ public class ContextMProphetExecutor {
 			return;
 		}
 
-		SearchParameters params =
-				SearchParameterParser.getDefaultParametersObject();
+		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
 
 		float peptideFDRThreshold = 0.01f;
 		int seed = 1;
@@ -188,7 +187,7 @@ public class ContextMProphetExecutor {
 			try {
 				ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListFile.getAbsolutePath());
 
-				File featureFile = new File(baseName + "_mprophet.features.txt");
+				File featureFile = new File(baseName + ".features.txt");
 
 				if (!featureFile.isFile()) {
 					System.out.println("Skipping mProphet because the feature file " + "was not created: " + featureFile.getAbsolutePath());

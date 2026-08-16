@@ -71,12 +71,13 @@ public class ContextMProphetExecutorCLI {
 				validateReadableFile("DIA", diaFilePath);
 				
 				ContextMProphetExecutor.executeMProphet(libraryPath, fastaPath, diaFilePath, massListPath);
+				
 			} else if (MODE_MPROPHET_FOLDER.equals(mode)) {
 				
 				String diaFolderPath = requireArguments(arguments, "--dia-folder");
 				File diaFolder = validateDirectory("DIA folder", diaFolderPath);
 				
-				ContextMProphetExecutor.executeMProphetOnFolder(libraryPath,  fastaPath, diaFolder);
+				ContextMProphetExecutor.executeMProphetOnFolder(libraryPath, fastaPath, diaFolder);
 				
 			} else {
 				throw new IllegalArgumentException(
