@@ -54,7 +54,7 @@ public class ContextMProphetExecutor {
 
 	}
 
- // TODO - This function only runs MProphet on the folder, not ContextMProphet
+ // TODO - This function prints the output to the context repo folder, and needs to print the output to an output folder
 	public static void executeContextMProphetOnFolder(String libraryPath, String fastaPath, File diaFolder) {
 
 	File fasta = new File(fastaPath);
@@ -75,8 +75,8 @@ public class ContextMProphetExecutor {
 						continue;
 					}
 
-					String diaName = diaFile.getName();
-					String baseName = diaName.replaceFirst("\\.dia$", "");
+			//		String diaName = diaFile.getName();
+					String baseName = diaFile.getAbsolutePath().replaceFirst("\\.dia$", "");
 					
 					File massListFile = new File(diaFolder, baseName + ".txt");
 					String massListPath = massListFile.getAbsolutePath();
@@ -119,8 +119,8 @@ public class ContextMProphetExecutor {
 	}
 
 
-	public static void executeMProphet(String libraryPath, String fastaPath, String diaFilePath, String massListPath) {
 		
+	public static void executeMProphet(String libraryPath, String fastaPath, String diaFilePath, String massListPath) {
 		File fasta = new File(fastaPath);
 		File diaFile = new File(diaFilePath);
 		File library = new File(libraryPath);
