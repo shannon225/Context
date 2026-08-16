@@ -52,6 +52,7 @@ public class ContextFeatureScorerTest {
 			assertNotNull(partitionedFeatures);
 			
 			System.out.println(partitionedFeatures.size() + " features scored and partitioned.");
+			System.out.println("Last feature in the list: " + partitionedFeatures.getLast());
 			
 		Path referenceOutput = Paths.get(baseName + "_reference.features.txt");
 		Path backgroundOutput = Paths.get(baseName + "_background.features.txt");

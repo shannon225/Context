@@ -71,7 +71,6 @@ public class ContextFeatureScorer {
 				return window;
 			}
 		}
-
 		return null;
 	}
 
@@ -94,6 +93,15 @@ public class ContextFeatureScorer {
 		}
 	}
 
+	private static int findColumnIndex(String[] headerColumns, String columnName) {
+		for (int i = 0; i < headerColumns.length; i++) {
+			if (columnName.equals(headerColumns[i])) {
+				return i;
+			}
+		}
+		throw new IllegalArgumentException("Required column was not found in the feature file: " + columnName);
+	}
+	
 	// Changed isFeatureOnMassList to only check for peptide sequence equivalence, not for mass, charge and RT equivalence. I don't think is needed, but keeping for now. 
 
 	public static ArrayList<ScoredFeature> scoreFeatures(File library, File rawFile, File fasta, String baseName,
@@ -130,20 +138,30 @@ public class ContextFeatureScorer {
 		try (BufferedReader br = new BufferedReader(new FileReader(featuresToSplit))) {
 			header = br.readLine();
 			if (header == null) {
-				throw new IOException("Feature file is empty, so no header could be read.");
+				throw new IOException("Feature file is empty, so no file could be read.");
 			}
-
+			
+			String[] headerColumns = header.split("\t", -1);
+			
+			int precursorMzIndex = findColumnIndex(headerColumns, "precursorMz");
+			int isDecoyIndex = findColumnIndex(headerColumns, "Label");
+			int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
+			int primaryScoreIndex = findColumnIndex(headerColumns, "primary");
+			int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
+			int sequenceIndex = findColumnIndex(headerColumns, "sequence");
+			int proteinIndex = findColumnIndex(headerColumns, "Proteins");
+			
 			String line;
 			while ((line = br.readLine()) != null) {
 				String columns[] = line.split("\t", -1);
 
-				double mz = Double.parseDouble(columns[27]);
+				double mz = Double.parseDouble(columns[precursorMzIndex]);
 				byte featureCharge = PercolatorPeptide.getCharge(columns[0]);
-				boolean isDecoy = Integer.parseInt(columns[1]) == -1;
-				float primary = Float.parseFloat(columns[3]);
-				float retentionTime = Float.parseFloat(columns[29]);
-				String sequence = columns[30];
-				String protein = columns[31];
+				boolean isDecoy = Integer.parseInt(columns[isDecoyIndex]) == -1;
+				float primary = Float.parseFloat(columns[primaryScoreIndex]);
+				float retentionTime = Float.parseFloat(columns[retentionTimeIndex]);
+				String sequence = columns[sequenceIndex];
+				String protein = columns[proteinIndex];
 
 				ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence, protein, line);
 
@@ -155,7 +173,6 @@ public class ContextFeatureScorer {
 				if (currentBest == null || feature.getPrimary() > currentBest.getPrimary()) {
 					bestFeatureByPeptide.put(sequence, feature);
 				}
-
 			}
 		}
 		ArrayList<ScoredFeature> bestFeatures = new ArrayList<>(bestFeatureByPeptide.values());
@@ -174,7 +191,7 @@ public class ContextFeatureScorer {
 
 		// Target mass list
 		ArrayList<IsolationWindow> targetWindows = IsolationWindowReader.parseMassList(massListPath);
-		System.out.println(targetWindows.size() + " windows cataloged from the mass list");
+		System.out.println(targetWindows.size() + " windows found in the mass list");
 
 		ArrayList<ScoredFeature> referenceFeatures = new ArrayList<>();
 		ArrayList<ScoredFeature> backgroundFeatures = new ArrayList<>();
