@@ -168,7 +168,7 @@ public class TargetedBootstrapper {
 				boolean decoyFound = false;
 				double mzTolerancePPM = 10;
 				
-				while (!decoyFound && mzTolerancePPM <= 2000) {
+				while (!decoyFound && mzTolerancePPM <= 320) {
 					double mzToleranceDa = targetMz * mzTolerancePPM / 1_000_000;
 					double upperMz = targetMz + mzToleranceDa;
 					double lowerMz = targetMz - mzToleranceDa;
@@ -179,29 +179,38 @@ public class TargetedBootstrapper {
 	
 					// Loop to find entrapment decoys at a different window from target peptides
 					for (LibraryEntry candidate : candidateDecoys) {
+						double candidateMinMz = candidate.getPrecursorMZ() - halfWindowWidthMz;
+						double candidateMaxMz = candidate.getPrecursorMZ() + halfWindowWidthMz;
+
 						float candidateRT = candidate.getRetentionTime();
-						float candidateMinRT = candidateRT - 240f;
-						float candidateMaxRT = candidateRT + 240f;
+						float candidateMinRT = candidateRT - (halfWindowWidthRT * 60f);
+						float candidateMaxRT = candidateRT + (halfWindowWidthRT * 60f);
 						
 						String decoySequence = candidate.getAccuratePeptideModSeq(aaConstants);
-						boolean overlapsAnyTarget = false;
-						
+						boolean decoyWindowOverlapsTarget = false;
 						
 					for (IsolationWindow comparisonTarget : targetWindows) {
+						
+						// Calculate isolation window for each window
+						double comparisonTargetMzMin = comparisonTarget.getTargetMz() - (10 * halfWindowWidthMz);
+						double comparisonTargetMzMax = comparisonTarget.getTargetMz() + (10 * halfWindowWidthMz);
+
+							
 						// Calculate target windows + buffer range - targets will be selected outside of this window
-						float minTargetRTWithBuffer = comparisonTarget.getRtMin() - 60f;
-						float maxTargetRTWithBuffer = comparisonTarget.getRtMax() + 60f;
+						float minTargetRTWithBuffer = comparisonTarget.getRtMin() - (halfWindowWidthRT * 60f);
+						float maxTargetRTWithBuffer = comparisonTarget.getRtMax() + (halfWindowWidthRT * 60f);
 						
-						boolean overlapsThisTarget = candidateMinRT <= maxTargetRTWithBuffer && candidateMaxRT >= minTargetRTWithBuffer;
-						
-						if (overlapsThisTarget) {
-							overlapsAnyTarget = true;
+						boolean overlapsThisTargetRT = candidateMinRT <= maxTargetRTWithBuffer && candidateMaxRT >= minTargetRTWithBuffer;
+						boolean overlapsThisTargetMz = candidateMinMz <= comparisonTargetMzMax && candidateMaxMz >= comparisonTargetMzMin;
+
+						if (overlapsThisTargetRT && overlapsThisTargetMz) {
+							decoyWindowOverlapsTarget = true;
 							break;
 						}
 					}
 						// If the candidate RT is outside of the target RT range, and the decoy sequence
-						// is different from the target, then add the decoy
-						if (!overlapsAnyTarget 
+						// is different from the target, then add the decoys
+						if (!decoyWindowOverlapsTarget 
 								&& !decoySequence.equals(targetSequence) 
 								&& !targetSequencesSelected.contains(decoySequence)
 								&& !decoySequencesSelected.contains(decoySequence) // has the decoy been used? 
@@ -222,8 +231,7 @@ public class TargetedBootstrapper {
 							decoyFound = true;
 
 							// Print info to the console to see what decoys are selected
-							System.out.println("Decoy candidate is " + decoyMz + " for " + decoySequence + " at "
-									+ candidateRT / 60);
+							System.out.println("Decoy candidate is " + decoyMz + " for " + decoySequence + " at "	+ candidateRT / 60);
 
 							break; // end loop after adding one decoy per target
 						}
@@ -235,10 +243,11 @@ public class TargetedBootstrapper {
 				
 				if (!decoyFound) {
 					unmatchedTargets.add(targetWindow);
-					System.out.println("No valid decoy was found per target " + targetSequence + " after searching up to " + mzTolerancePPM + " ppm.");
+				//	System.out.println("No valid decoy was found per target " + targetSequence + " after searching up to " + mzTolerancePPM + " ppm.");
 					continue;
 				}
 			}
+
 		} catch (Exception e) {
 			throw e;
 		} finally {
