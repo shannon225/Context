@@ -9,21 +9,28 @@ import java.util.Set;
 public class ContextMProphetExecutorCLI {
 	
 	private static final String MODE_CONTEXT = "context";
-	private static final String MODE_FOLDER = "folder";
+	private static final String MODE_CONTEXT_FOLDER = "context-folder";
 	private static final String MODE_MPROPHET = "mprophet";
+	private static final String MODE_MPROPHET_FOLDER = "mprophet-folder";
 	private static final Set<String> ALLOWED_ARGUMENTS = new HashSet<>();
 
 	static {
 		ALLOWED_ARGUMENTS.add("--library");
 		ALLOWED_ARGUMENTS.add("--fasta");
 		ALLOWED_ARGUMENTS.add("--dia");
+		ALLOWED_ARGUMENTS.add("--dia-folder");
 		ALLOWED_ARGUMENTS.add("--mass-list");
 		ALLOWED_ARGUMENTS.add("--mode");
 	}
 
 	public static void main(String[] args) {
 		try {
-			if (args.length < 3 || containsHelpFlag(args)) {
+			if (containsHelpFlag(args)) {
+				printUsage();
+				return;
+			}
+			
+			if (args.length == 0) {
 				printUsage();
 				System.exit(1);
 				return;
@@ -33,7 +40,6 @@ public class ContextMProphetExecutorCLI {
 
 			String libraryPath = requireArguments(arguments, "--library");
 			String fastaPath = requireArguments(arguments, "--fasta");
-			String diaFilePath = requireArguments(arguments, "--dia");
 			String mode = arguments.getOrDefault("--mode", MODE_CONTEXT).toLowerCase();
 
 			validateReadableFile("Library", libraryPath);
@@ -41,31 +47,40 @@ public class ContextMProphetExecutorCLI {
 
 			if (MODE_CONTEXT.equals(mode)) {
 				
+				String diaFilePath = requireArguments(arguments, "--dia");
 				String massListPath = requireArguments(arguments, "--mass-list");
+				
 				validateReadableFile("Mass list", massListPath);
 				validateReadableFile("DIA", diaFilePath);
 
 				ContextMProphetExecutor.executeContextMProphet(libraryPath, fastaPath, diaFilePath, massListPath);
 				
-			} else if (MODE_FOLDER.equals(mode)) {
+			} else if (MODE_CONTEXT_FOLDER.equals(mode)) {
 				
-				String diaFolderPath = requireArguments(arguments, "--dia");
+				String diaFolderPath = requireArguments(arguments, "--dia-folder");
 				File diaFolder = validateDirectory("DIA folder", diaFolderPath);
 
 				ContextMProphetExecutor.executeContextMProphetOnFolder(libraryPath, fastaPath, diaFolder);
 				
 			} else if (MODE_MPROPHET.equals(mode)) {
 				
-				File diaFolder = new File(diaFilePath).getAbsoluteFile().getParentFile();
+				String diaFilePath = requireArguments(arguments, "--dia");
 				String massListPath = requireArguments(arguments, "--mass-list");
+				
 				validateReadableFile("Mass list", massListPath);
 				validateReadableFile("DIA", diaFilePath);
-
-				ContextMProphetExecutor.executeMProphet(libraryPath, fastaPath, diaFilePath, massListPath, diaFolder);
+				
+				ContextMProphetExecutor.executeMProphet(libraryPath, fastaPath, diaFilePath, massListPath);
+			} else if (MODE_MPROPHET_FOLDER.equals(mode)) {
+				
+				String diaFolderPath = requireArguments(arguments, "--dia-folder");
+				File diaFolder = validateDirectory("DIA folder", diaFolderPath);
+				
+				ContextMProphetExecutor.executeMProphetOnFolder(libraryPath,  fastaPath, diaFolder);
 				
 			} else {
 				throw new IllegalArgumentException(
-						"Unknown mode '" + mode + "'. Expected context, folder, or mprophet.");
+						"Unknown mode '" + mode + "'. Expected context, context-folder, mprophet or mprophet-folder.");
 			}
 		} catch (IllegalArgumentException e) {
 			System.err.println("Error: " + e.getMessage());
@@ -116,9 +131,9 @@ public class ContextMProphetExecutorCLI {
 
 	private static File validateDirectory(String description, String path) {
 		File directory = new File(path);
-		if (!directory.isDirectory()) {
+		if (!directory.isDirectory()  || !directory.canRead()) {
 			throw new IllegalArgumentException(
-					description + " is not a directory: " + directory.getAbsolutePath());
+					description + " is not a readable directory: " + directory.getAbsolutePath());
 		}
 		return directory;
 	}
@@ -134,18 +149,23 @@ public class ContextMProphetExecutorCLI {
 
 	private static void printUsage() {
 		System.out.println("Usage:");
-		System.out.println("  java org.searlelab.context.mprophet.ContextMProphetCLI \\");
+		System.out.println("  java org.searlelab.context.mprophet.ContextMProphetExecutorCLI \\");
 		System.out.println("      --library <library.elib> \\");
 		System.out.println("      --fasta <proteins.fasta> \\");
-		System.out.println("      --dia <input.dia> \\");
-		System.out.println("      --mass-list <assay.txt> \\");
-		System.out.println("      [--mode context|folder|mprophet] \\");
-		System.out.println("      [--dia-folder <folder>]");
+		System.out.println("      --mode <context|context-folder|mprophet|mprophet-folder> \\");
+		System.out.println("      [--dia <input.dia>] \\");
+		System.out.println("      [--dia-folder <folder>] \\");
+		System.out.println("      [--mass-list <assay.txt>]");
 		System.out.println();
 		System.out.println("Modes:");
-		System.out.println("  context    Run executeContextMProphet (default).");
-		System.out.println("  folder     Run executeContextMProphetOnFolder; requires --dia-folder.");
-		System.out.println("  mprophet   Run executeMProphet.");
+		System.out.println("  context           Run executeContextMProphet.");
+		System.out.println("                    Requires --dia and --mass-list.");
+		System.out.println("  context-folder    Run executeContextMProphetOnFolder.");
+		System.out.println("                    Requires --dia-folder.");
+		System.out.println("  mprophet          Run executeMProphet.");
+		System.out.println("                    Requires --dia and --mass-list.");
+		System.out.println("  mprophet-folder   Run executeMProphetOnFolder.");
+		System.out.println("                    Requires --dia-folder.");
 	}
-}
 
+}
