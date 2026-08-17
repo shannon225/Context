@@ -1,0 +1,15 @@
+.git
+.github
+target
+build-cache
+tools
+test
+tmp
+*.sif
+*.md
+context.def
+.vscode
+.idea
+.settings
+.classpath
+.project

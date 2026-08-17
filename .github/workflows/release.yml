@@ -1,0 +1,119 @@
+name: Release the Context jar
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, for example v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Check the tag and pom.xml agree on the version
+        id: version
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          version="${tag#v}"
+          pom="$(python3 -c "import xml.etree.ElementTree as ET; \
+            ns='{http://maven.apache.org/POM/4.0.0}'; \
+            print(ET.parse('pom.xml').getroot().find(ns+'version').text)")"
+          echo "tag $tag -> $version, pom.xml -> $pom"
+          if [ "$version" != "${pom%-SNAPSHOT}" ]; then
+            echo "::error::Tag '$tag' and pom.xml version '$pom' disagree. Either tag v${pom%-SNAPSHOT}, or set <version> in pom.xml to ${version}-SNAPSHOT and commit that first."
+            exit 1
+          fi
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check the jars are present
+        run: |
+          missing=0
+          for jar in libs/maccoss/encyclopedia/6.6.24/encyclopedia-6.6.24.jar \
+                     libs/org/searlelab/msrawjava-core-nolice/26.7.31/msrawjava-core-nolice-26.7.31.jar; do
+            if [ ! -s "$jar" ]; then echo "missing or empty: $jar"; missing=1; fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::The EncyclopeDIA jars are not in the checkout. They must be committed under libs/ for this to build."
+            exit 1
+          fi
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Stamp the tag's version into the pom
+        run: >
+          mvn -B org.codehaus.mojo:versions-maven-plugin:2.17.1:set
+          -DnewVersion=${{ steps.version.outputs.number }}
+          -DgenerateBackupPoms=false
+
+      - name: Build the jar, running the tests
+        run: mvn -B -Ppackage clean verify
+
+      - name: Keep the test reports if anything failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+
+      - name: Collect the release asset
+        run: |
+          mkdir -p dist
+          cp target/context-*.jar dist/context.jar
+          ls -lh dist/context.jar
+          (cd dist && sha256sum context.jar > context.jar.sha256)
+
+      - name: Refuse to release Thermo binaries
+        run: |
+          count="$(unzip -l dist/context.jar | grep -c 'msraw/thermo/' || true)"
+          echo "Thermo entries in the jar: $count"
+          if [ "$count" != "0" ]; then
+            echo "::error::This jar bundles Thermo RawFileReader and must not be released. Was -Pthermo used?"
+            exit 1
+          fi
+
+      - name: Smoke-test the jar
+        run: |
+          java -jar dist/context.jar --help
+          java -jar dist/context.jar percolator -h
+          java -jar dist/context.jar mprophet -h
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: Context ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/context.jar
+            dist/context.jar.sha256
+          body: |
+            Download `context.jar` below and run it with Java 17 or newer:
+
+            ```bash
+            java -jar context.jar --help
+            ```
+
+            Or skip the jar entirely and use the container image, which also
+            carries Java, Percolator and pyIsoPEP:
+
+            ```bash
+            apptainer pull context.sif docker://ghcr.io/${{ github.repository_owner }}/context:${{ inputs.tag || github.ref_name }}
+            ```
+
+            Reads `.dia`, `.mzML` and Bruker `.d`. Convert Thermo `.raw` with
+            msconvert first. See README.

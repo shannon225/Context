@@ -1,0 +1,29 @@
+Bootstrap: docker
+From: eclipse-temurin:17-jre
+
+%files
+    target/context-0.0.1-SNAPSHOT.jar /opt/context/context.jar
+
+%post
+    apt-get update
+    apt-get install -y --no-install-recommends python3 python3-venv
+    rm -rf /var/lib/apt/lists/*
+    python3 -m venv /opt/pyisopep
+    /opt/pyisopep/bin/pip install --no-cache-dir --upgrade pip
+    /opt/pyisopep/bin/pip install --no-cache-dir pyIsoPEP
+
+%environment
+    export PATH=/opt/pyisopep/bin:$PATH
+    export TMPDIR=${TMPDIR:-/tmp}
+    export JAVA_OPTS=${JAVA_OPTS:-}
+
+%runscript
+    exec java $JAVA_OPTS -jar /opt/context/context.jar "$@"
+
+%test
+    java -jar /opt/context/context.jar --help
+    /opt/pyisopep/bin/pyisopep --help
+
+%labels
+    Name Context
+    Description Confidence estimation for targeted proteomics, built on EncyclopeDIA

@@ -1,0 +1,64 @@
+name: Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Check the jars are present
+        run: |
+          missing=0
+          for jar in libs/maccoss/encyclopedia/6.6.24/encyclopedia-6.6.24.jar \
+                     libs/org/searlelab/msrawjava-core-nolice/26.7.31/msrawjava-core-nolice-26.7.31.jar; do
+            if [ ! -s "$jar" ]; then echo "missing or empty: $jar"; missing=1; fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::The EncyclopeDIA jars are not in the checkout. They are needed to build."
+            exit 1
+          fi
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pyIsoPEP
+        run: |
+          python -m pip install --quiet --no-cache-dir pyIsoPEP
+          pyisopep --help > /dev/null
+          echo "PYISOPEP=$(command -v pyisopep)" >> "$GITHUB_ENV"
+          echo "pyisopep: $(command -v pyisopep)"
+
+      - name: Build and test
+        run: mvn -B -Ppackage clean verify
+
+      - name: Keep the test reports if anything failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+
+      - name: Check the jar runs
+        run: java -jar target/context-*.jar --help

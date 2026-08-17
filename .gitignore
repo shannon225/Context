@@ -36,3 +36,16 @@ Thumbs.db
 # Local environment/config files
 .env
 *.local
+
+!libs/**/*.pom
+!libs/**/*.pom.original
+libs/README.md
+!libs/maccoss/**/*.jar
+!libs/org/searlelab/msrawjava-core-nolice/**/*.jar
+libs/org/searlelab/msrawjava-core/**
+build-cache/
+tools/
+tmp/
+/test/
+*.sif
+README_dev.md
