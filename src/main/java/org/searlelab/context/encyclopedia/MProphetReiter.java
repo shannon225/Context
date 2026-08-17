@@ -187,10 +187,10 @@ public class MProphetReiter implements Runnable {
 				Pair<ArrayList<ScoredMProphetData>, Float> seedData=testingDataset.getPassingTargetsByFDR(Optional.ofNullable(seedModel), 0.01f);
 				if (seedData.x.size()>data.x.size()) {	
 					models.add(new ScoredObject<LinearDiscriminantAnalysis>(seedData.x.size(), seedModel));
-					Logger.logLine("Iteration "+(n+1)+": prefer seed model, "+seedData.x.size()+"/"+testingDataset.getTargetData().size()+" passing, pi0:"+seedData.y);
+					Logger.logLine("Iteration "+(n+1)+": prefer seed model, "+seedData.x.size()+"/"+testingDataset.getTargetData().size()+" passing, pi0:"+cappedPi0(seedData.y));
 				} else {
 					models.add(new ScoredObject<LinearDiscriminantAnalysis>(data.x.size(), lda));
-					Logger.logLine("Iteration "+(n+1)+": "+data.x.size()+"/"+testingDataset.getTargetData().size()+" passing, pi0:"+data.y);
+					Logger.logLine("Iteration "+(n+1)+": "+data.x.size()+"/"+testingDataset.getTargetData().size()+" passing, pi0:"+cappedPi0(data.y));
 				}
 			}
 		}
@@ -218,8 +218,10 @@ public class MProphetReiter implements Runnable {
 		}
 		Pair<ArrayList<ScoredMProphetData>, Float> finalDecoyData=dataset.getPassingTargetsByFDR(Optional.ofNullable(averageModel), Float.MAX_VALUE, true);
 
+		float pi0=cappedPi0(finalData.y);
+
 		// report model for logging
-		Logger.logLine("Final model: "+passingCount+"/"+dataset.getTargetData().size()+" passing, pi0:"+finalData.y);
+		Logger.logLine("Final model: "+passingCount+"/"+dataset.getTargetData().size()+" passing, pi0:"+pi0);
 		
 		for (int i = 0; i < averageModel.getCoefficients().length; i++) {
 			Logger.logLine("   "+dataset.getFeatureNames().get(i)+" --> "+averageModel.getCoefficients()[i]);
@@ -261,21 +263,25 @@ public class MProphetReiter implements Runnable {
 					targetWriter.println(scoredData.getData().getId()+"\t"+score+"\t"+qValue+"\t"+posteriorErrorProb+"\t"+"-."+scoredData.getData().getSequence()+".-"+"\t"+scoredData.getData().getProtein());
 				}
 			}
-			targetWriter.println("pi_0="+finalData.y);
-			decoyWriter.println("pi_0="+finalData.y);
+			targetWriter.println("pi_0="+pi0);
+			decoyWriter.println("pi_0="+pi0);
 
 			targetWriter.flush();
 			decoyWriter.flush();
 			targetWriter.close();
 			decoyWriter.close();
-			
+
 		} catch (FileNotFoundException e) {
 			throw new EncyclopediaException("Error setting up output file: " + settings.getPeptideOutputFile().getAbsolutePath(), e);
 		} catch (UnsupportedEncodingException e) {
 			throw new EncyclopediaException("Error setting up output file: " + settings.getPeptideOutputFile().getAbsolutePath(), e);
 		}
 		
-		return new MProphetResult(detectedPeptides, averageModel, dataset.getFeatureNames(), finalData.y);
+		return new MProphetResult(detectedPeptides, averageModel, dataset.getFeatureNames(), pi0);
+	}
+
+	private static float cappedPi0(float pi0) {
+		return Math.min(1.0f, pi0);
 	}
 	
 	protected MProphetResult calculateProbabilitiesWithModel(
@@ -294,8 +300,10 @@ public class MProphetReiter implements Runnable {
 		Pair<ArrayList<ScoredMProphetData>, Float> finalDecoyData =
 				dataset.getPassingTargetsByFDR(Optional.ofNullable(lda), Float.MAX_VALUE, true);
 
+		float pi0 = cappedPi0(finalData.y);
+
 		Logger.logLine("Final supplied model: " + passingCount + "/"
-				+ dataset.getTargetData().size() + " passing, pi0:" + finalData.y);
+				+ dataset.getTargetData().size() + " passing, pi0:" + pi0);
 
 		for (int i = 0; i < lda.getCoefficients().length; i++) {
 			Logger.logLine("   " + dataset.getFeatureNames().get(i) + " --> " + lda.getCoefficients()[i]);
@@ -356,8 +364,8 @@ public class MProphetReiter implements Runnable {
 				}
 			}
 
-			targetWriter.println("pi_0=" + finalData.y);
-			decoyWriter.println("pi_0=" + finalData.y);
+			targetWriter.println("pi_0=" + pi0);
+			decoyWriter.println("pi_0=" + pi0);
 
 			targetWriter.flush();
 			decoyWriter.flush();
@@ -372,7 +380,7 @@ public class MProphetReiter implements Runnable {
 					+ settings.getPeptideOutputFile().getAbsolutePath(), e);
 		}
 
-		return new MProphetResult(detectedPeptides, lda, dataset.getFeatureNames(), finalData.y);
+		return new MProphetResult(detectedPeptides, lda, dataset.getFeatureNames(), pi0);
 	}
 
 	public boolean hadError() {

@@ -26,6 +26,7 @@ import org.searlelab.msrawjava.io.StripeFileInterface;
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
 import org.searlelab.context.encyclopedia.SearchToBLIB;
 import org.searlelab.context.io.IsolationWindowReader;
+import org.searlelab.context.io.RawFiles;
 
 public class ContextFeatureScorer {
 
@@ -33,8 +34,10 @@ public class ContextFeatureScorer {
 
 		if (args.length != 4) {
 			System.err.println("Usage: ");
-			System.err.println("java edu.washington.gs.maccoss.encyclopedia.context.ContextFeatureScorer " + 
-					"<rawFilePath> <libraryFilePath> <fastaPath> <massListPath");
+			System.err.println("java org.searlelab.context.mprophet.ContextFeatureScorer " +
+					"<rawFilePath> <libraryFilePath> <fastaPath> <massListPath>");
+			System.err.println("rawFilePath accepts " + RawFiles.supportedExtensions());
+			System.exit(1);
 		}
 
 		String rawFilePath = args[0];
@@ -42,14 +45,14 @@ public class ContextFeatureScorer {
 		String fastaPath = args[2];
 		String massListPath = args[3];
 
-		String baseName = rawFilePath.replaceFirst("\\.dia$", "");
+		String baseName = RawFiles.stripExtension(rawFilePath);
 		final File fasta = new File(fastaPath);
 		File rawFile = new File(rawFilePath);
 		File library = new File(libraryFilePath);
 
 		try {
 			ArrayList<ScoredFeature> partitionedFeatures = scoreFeatures(library, rawFile, fasta, baseName, massListPath);
-			System.out.println("Features are scored and paritioned at " + partitionedFeatures.getLast());
+			System.out.println("Scored and partitioned " + partitionedFeatures.size() + " features.");
 		} catch (Exception e) {
 			System.out.println("Something did not work... see the error tace");
 			e.printStackTrace();
