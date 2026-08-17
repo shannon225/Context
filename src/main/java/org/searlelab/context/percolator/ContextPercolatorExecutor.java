@@ -1,0 +1,156 @@
+package org.searlelab.context.percolator;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+
+import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
+import edu.washington.gs.maccoss.encyclopedia.utils.CommandLineParser;
+import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
+
+import org.searlelab.context.io.ContextOptions;
+import org.searlelab.context.io.MassListDecoyGenerator;
+import org.searlelab.context.io.RawFiles;
+import org.searlelab.context.mprophet.ContextFeatureScorer;
+
+public class ContextPercolatorExecutor {
+	private static final float DEFAULT_FDR = ContextPercolator.DEFAULT_FDR;
+
+	public static void main(String[] args) {
+		HashMap<String, String> arguments = CommandLineParser.parseArguments(args);
+
+		if (args.length == 0 || arguments.containsKey("-h") || arguments.containsKey("-help")
+				|| arguments.containsKey("--help")) {
+			printHelp();
+			System.exit(args.length == 0 ? 1 : 0);
+		}
+
+		try {
+			float fdr = Float.parseFloat(arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
+			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("-pyisopep"));
+
+			if (arguments.containsKey("-background") || arguments.containsKey("-reference")) {
+				File background = requiredFile(arguments, "-background");
+				File reference = requiredFile(arguments, "-reference");
+				File fasta = requiredFile(arguments, "-f");
+				File outputDirectory = ContextOptions.outputDirectory(arguments,
+						background.getAbsoluteFile().getParentFile());
+				String prefix = arguments.getOrDefault("-prefix", ContextOptions.stripSplitSuffix(background));
+
+				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
+
+				ContextPercolator.trainAndApply(background, reference, fasta, encyclopediaArgs, pyIsoPEP, fdr,
+						outputDirectory, prefix);
+			} else {
+				File dia = requiredFile(arguments, "-i");
+				File library = requiredFile(arguments, "-l");
+				File fasta = requiredFile(arguments, "-f");
+				File massList = requiredFile(arguments, "-massList");
+				File outputDirectory = ContextOptions.outputDirectory(arguments,
+						dia.getAbsoluteFile().getParentFile());
+				String prefix = arguments.get("-prefix");
+				boolean generateDecoys = ContextOptions.isEnabled(arguments, "-generateDecoys");
+
+				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
+
+				runEndToEnd(library, fasta, dia, massList, pyIsoPEP, fdr, outputDirectory, prefix, generateDecoys,
+						encyclopediaArgs);
+			}
+		} catch (Exception e) {
+			Logger.errorLine("ContextPercolatorExecutor failed: " + e.getMessage());
+			e.printStackTrace();
+			System.exit(2);
+		}
+	}
+
+	public static ContextPercolatorResult runEndToEnd(File library, File fasta, File dia, File massList,
+			PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix, boolean generateDecoys,
+			HashMap<String, String> encyclopediaArgs) throws Exception {
+
+		if (!dia.exists()) throw new IOException("Input file not found: " + dia);
+		if (!library.exists()) throw new IOException("Library file not found: " + library);
+		if (!fasta.exists()) throw new IOException("FASTA file not found: " + fasta);
+		if (!massList.exists()) throw new IOException("Mass list file not found: " + massList);
+		RawFiles.requireSupported(dia);
+
+		String baseName = RawFiles.baseName(dia);
+		String resolvedPrefix = prefix != null ? prefix : new File(baseName).getName();
+
+		File splitOn = MassListDecoyGenerator.resolveForSplit(massList, outputDirectory, resolvedPrefix,
+				generateDecoys);
+
+		Logger.logLine("Scoring " + dia.getName() + " against " + library.getName());
+		ContextFeatureScorer.scoreFeatures(library, dia, fasta, baseName, splitOn.getAbsolutePath());
+
+		File backgroundFeatures = new File(baseName + "_background.features.txt");
+		File referenceFeatures = new File(baseName + "_reference.features.txt");
+
+		return ContextPercolator.trainAndApply(backgroundFeatures, referenceFeatures, fasta, encyclopediaArgs,
+				pyIsoPEP, fdr, outputDirectory, resolvedPrefix);
+	}
+
+	private static HashMap<String, String> encyclopediaArguments(HashMap<String, String> arguments) {
+		HashMap<String, String> parameters = SearchParameterParser.getDefaultParameters();
+		for (String contextFlag : new String[] { "-i", "-l", "-f", "-massList", "-fdr", "-o", "-outdir", "-prefix",
+				"-background", "-reference", "-pyisopep", "-generateDecoys", "-h", "-help", "--help" }) {
+			arguments.remove(contextFlag);
+		}
+		parameters.putAll(arguments);
+		return parameters;
+	}
+
+
+
+	private static File requiredFile(HashMap<String, String> arguments, String flag) {
+		String value = arguments.get(flag);
+		if (value == null) {
+			Logger.errorLine("Missing required argument: " + flag);
+			printHelp();
+			System.exit(1);
+		}
+		return new File(value);
+	}
+
+	private static void printHelp() {
+		Logger.timelessLogLine("ContextPercolatorExecutor");
+		Logger.timelessLogLine("Context-mode Percolator: train the discriminant on background peptides,");
+		Logger.timelessLogLine("then transfer it to the targeted reference peptides without retraining.");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("End-to-end from a raw file:");
+		Logger.timelessLogLine("  -i        <file>   acquisition: " + RawFiles.supportedExtensions());
+		Logger.timelessLogLine("  -l        <file>   library (.elib preferred, .dlib accepted)");
+		Logger.timelessLogLine("  -f        <file>   FASTA protein database");
+		Logger.timelessLogLine("  -massList <file>   assay / mass-list .txt or .csv");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("Or from feature files that were already split:");
+		Logger.timelessLogLine("  -background <file> background feature TSV");
+		Logger.timelessLogLine("  -reference  <file> reference feature TSV");
+		Logger.timelessLogLine("  -f          <file> FASTA protein database");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("Optional:");
+		Logger.timelessLogLine("  -fdr      <float>  peptide FDR threshold (default: " + DEFAULT_FDR + ")");
+		Logger.timelessLogLine("  -o        <dir>    output directory (default: next to the input)");
+		Logger.timelessLogLine("  -prefix   <name>   base name for output files");
+		Logger.timelessLogLine("  -generateDecoys    add entrapment decoys when the mass list has none;");
+		Logger.timelessLogLine("                     a list that already has decoys is used unchanged");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("pyIsoPEP, which estimates the q-values and PEPs:");
+		Logger.timelessLogLine("  -pyisopep <path>   pyisopep executable (default: look for it on PATH)");
+		Logger.timelessLogLine("                     install with `pip install pyIsoPEP`;");
+		Logger.timelessLogLine("                     the Context container image already has it");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("Any other flag is passed through to EncyclopeDIA, for example");
+		Logger.timelessLogLine("  -percolatorVersion <2|3|/path/to/percolator>");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("Outputs, under <-o>/" + ContextPercolator.ENGINE_NAME + "/:");
+		Logger.timelessLogLine("  <prefix>.peptide.reference.txt          peptide-level reference targets");
+		Logger.timelessLogLine("  <prefix>.psm.reference.txt              PSM-level reference targets");
+		Logger.timelessLogLine("  <prefix>.rescored_features.txt          reference features plus transferred score");
+		Logger.timelessLogLine("  model/<prefix>.weights.txt              Percolator's native weights");
+		Logger.timelessLogLine("  model/<prefix>.weights.averaged.txt     the same model as feature/weight pairs");
+		Logger.timelessLogLine("  work/<prefix>.*.pyisopep.txt            pyIsoPEP's unedited reports");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("and, when -generateDecoys had work to do, in <-o> itself:");
+		Logger.timelessLogLine("  <prefix>.assay.with_decoys.txt          the assay it built");
+	}
+}

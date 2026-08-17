@@ -11,7 +11,7 @@ public class TargetedBootstrapperCLI {
 
 	public static void main(String[] args) throws Throwable {
 		if (args.length < 3 || args.length > 7) {
-			System.err.println("Usage: " + "org.searlelab.contextguide.io.TargetedBootstrapper "
+			System.err.println("Usage: " + "java -jar context.jar bootstrap "
 					+ "<library file location> <.dia file location> <target_decoy map output location> "
 					+ "\n[seed] [numberOfpeptides] [halfWindowWidthRT] [halfWindowWidthMz]");
 			System.exit(1);

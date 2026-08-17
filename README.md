@@ -1,239 +1,226 @@
-# ContextGuide
+# Context
 
-Classes that will use Encyclopedia's framework to implement Context with MProphet. This repo will serve as a source code for the ideas that are encompassed in Context.
+Confidence estimation for targeted proteomics, built on EncyclopeDIA.
 
-## Installing ContextGuide from the command line
+A set of targeted reference peptides is normally far too small to train a discriminant on. But the
+same acquisition also contains a large background of non-targeted peptides that is big enough.
+Context trains the discriminant on that background and applies it to the reference peptides.
 
-### Requirements
+Two engines can realize this:
 
-Before installing ContextGuide, confirm that the following programs are installed:
+* `percolator`: trains Percolator on the background peptides, applies the model to the reference
+  peptides. q-values and PEPs from [pyIsoPEP](https://github.com/statisticalbiotechnology/smooth_q_to_pep).
+* `mprophet`: trains an mProphet LDA on the background peptides, applies it to the reference
+  peptides. q-values from Benjamini-Hochberg, PEPs from Storey's method.
 
-* Java Development Kit 17
-* Apache Maven
-* Git
+## 1. Get Context
 
-Check the installations with:
+### The container image, which needs nothing else installed
 
 ```bash
-java -version
-javac -version
-mvn -version
-git --version
+apptainer pull context.sif docker://ghcr.io/shannon225/context:latest
+apptainer run context.sif --help
 ```
 
-Java and Maven should report that they are using Java 17.
+or with Docker:
 
-### Obtain the required dependency files
+```bash
+docker run --rm ghcr.io/shannon225/context:latest --help
+```
 
-ContextGuide currently requires two dependencies that must be installed manually:
+The image carries the Java runtime, Percolator and pyIsoPEP. This is the recommended way to run Context.
 
-* Encyclopedia 6.6.24
-* MSRawJava Core 26.7.1
+### Or the jar, if Java 17+ is available
 
-You should receive the following four files from the ContextGuide maintainer:
+Download `context.jar` from the [latest release](https://github.com/shannon225/context/releases/latest):
+
+```bash
+java -jar context.jar --help
+```
+
+The `mprophet` engine needs nothing else. The `percolator` engine also needs pyIsoPEP to derive
+q-values and PEPs. We recommend to create an environment for it.
+
+#### A Python virtual environment
+
+Nothing is required beyond the `python3` (3.9+):
+
+```bash
+python3 -m venv ~/context-env
+~/context-env/bin/pip install --no-cache-dir pyIsoPEP
+```
+
+Any suitable directory can be used. `~/context-env` is just a suggestion.
+
+Then, tell Context where it is:
+
+```bash
+java -jar context.jar percolator ... -pyisopep ~/context-env/bin/pyisopep
+```
+
+#### Or a conda / mamba environment
+
+```bash
+conda create -n context python=3.12    # or: mamba create -n context python=3.12
+conda activate context
+pip install --no-cache-dir pyIsoPEP
+```
+
+While the environment is active, Context can find it without `-pyisopep`:
+
+```bash
+java -jar context.jar percolator ...
+```
+
+#### Removing the environment
+
+```bash
+rm -rf ~/context-env
+```
+Or
+
+```bash
+conda deactivate
+conda env remove -n context
+conda clean --all        # optional: also drops conda's own cache of downloaded packages
+```
+
+## 2. Input files
+
+Four files:
+
+| flag | input | notes |
+|------|-------|-------|
+| `-i` | the acquisition | `.dia`, `.mzML`, or `.d` (Bruker). Thermo `.raw` must be converted first, [see below](#thermo-raw-files) |
+| `-l` | the spectral library | `.elib` preferred, `.dlib` accepted |
+| `-f` | the FASTA | the protein database the library was built against |
+| `-massList` | assay / mass list | `.txt` (tab-separated) or `.csv`, at least 7 columns |
+
+### The mass list
+
+This is the list of the reference peptides. It is what tells Context which part of the run is the
+reference peptides and which part is background. The format is a Skyline-style isolation list:
 
 ```text
-encyclopedia-6.6.24.jar
-encyclopedia-6.6.24.pom
-msrawjava-core-26.7.1.jar
-msrawjava-core-26.7.1.pom
+Compound         Formula  Adduct       m/z       z  RT Time (min)  Window (min)  isDecoy
+IGQVHHALDTTIK             (no adduct)  478.2684  3  16.226         0.5           false
+IITTDLAHHVQGK             (no adduct)  478.2684  3  16.226         0.5           true
 ```
 
-Place all four files in the same directory. For example:
+Context reads the peptide sequence, `m/z`, `z`, the RT centre and RT window width (both in minutes),
+and `isDecoy`. `Formula` and `Adduct` are ignored and may be empty. Everything Context finds in the
+acquisition that is **not** on this list becomes the background it trains on.
+
+### Decoys
+
+That last column is what makes the confidence estimate possible. q-values and PEPs come from
+target-decoy competition. A plain Skyline export stops at `Window (min)` and so contains no
+decoys at all. If the mass list is target-only, let Context build entrapment decoys: one decoy peptide
+per target, same charge, same RT window, matched mass. Just add the flag `-generateDecoys`:
+
+```bash
+java -jar context.jar percolator -i run01.dia -l library.elib -f database.fasta \
+  -massList run01_assay.txt -generateDecoys -o results_run01
+```
+
+It writes the expanded list to `results_run01/run01.assay.with_decoys.txt` and uses that. A list that
+*already* has decoys is used unchanged, so the flag is harmless to leave on.
+
+## 3. Run Context
+
+With the image:
+
+```bash
+apptainer run --bind "$PWD:/data" --pwd /data context.sif percolator \
+  -i        run01.dia \
+  -l        library.elib \
+  -f        database.fasta \
+  -massList run01_assay.txt \
+  -generateDecoys \
+  -o        results_run01
+```
+
+With the jar, the same run is:
+
+```bash
+java -jar context.jar percolator \
+  -i run01.dia -l library.elib -f database.fasta \
+  -massList run01_assay.txt -generateDecoys -o results_run01
+```
+
+Swap `percolator` for `mprophet` to run the other engine.
+
+### Output layout
 
 ```text
-contextguide-dependencies/
-├── encyclopedia-6.6.24.jar
-├── encyclopedia-6.6.24.pom
-├── msrawjava-core-26.7.1.jar
-└── msrawjava-core-26.7.1.pom
+results_run01/percolator/
+  run01.peptide.reference.txt    reference target peptides, with q-value and posterior_error_prob
+  run01.psm.reference.txt        the same at PSM level
+  run01.rescored_features.txt    every reference feature, target and decoy, with its score
+  model/                         the model learned on the background
+  work/                          intermediate tables and files from pyIsoPEP
+
+results_run01/mprophet/
+  run01.peptide.reference.txt          target reference peptides
+  run01.peptide.reference.decoy.txt    decoy reference peptides
+  run01.peptide.background.txt         target background peptides
+  run01.peptide.background.decoy.txt   decoy background peptides
+  model/, work/
 ```
 
-Open a terminal and navigate to that directory:
+### Re-running without re-scoring
+
+Scoring the acquisition leaves `run01_background.features.txt` and `run01_reference.features.txt` next to the acquisition, and both engines can start from those directly:
 
 ```bash
-cd /path/to/contextguide-dependencies
+java -jar context.jar mprophet \
+  -background run01_background.features.txt \
+  -reference  run01_reference.features.txt \
+  -f          database.fasta \
+  -o          results_run01 \
+  -prefix     run01
 ```
 
-Replace `/path/to/contextguide-dependencies` with the actual directory containing the files.
+## Options
 
-### Install MSRawJava Core
+| flag | default | description |
+|------|---------|-------------|
+| `-i`, `-l`, `-f`, `-massList` | *required* | the four inputs above |
+| `-background`, `-reference` | — | use these plus `-f` instead, to start from feature files already split |
+| `-generateDecoys` | off | add entrapment decoys when the mass list has none |
+| `-o` | next to the input | output directory |
+| `-prefix` | the acquisition's name | base name for the output files |
+| `-fdr` | `0.01` | peptide FDR threshold used for reporting |
+| `-seed` | `1` | random seed (`mprophet` only) |
+| `-pyisopep` | look on `PATH` | path to the `pyisopep` executable (`percolator` only) |
 
-Run:
+Any other flag is passed straight through to EncyclopeDIA.
+
+## Thermo .raw files
+
+Context reads `.dia`, `.mzML` and Bruker `.d`, but not Thermo `.raw`: the published jar and image
+leave out Thermo's RawFileReader, whose licence forbids redistributing it. Convert first, with
+ProteoWizard:
 
 ```bash
-mvn org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file -Dfile=msrawjava-core-26.7.1.jar -DpomFile=msrawjava-core-26.7.1.pom
+apptainer pull pwiz.sif docker://proteowizard/pwiz-skyline-i-agree-to-the-vendor-licenses
+apptainer exec -B "$(mktemp -d /dev/shm/wineXXXX)":/mywineprefix \
+  pwiz.sif wine msconvert run01.raw -o .
 ```
 
-The command should end with:
+Then run Context on `run01.mzML`.
+
+## All commands
 
 ```text
-BUILD SUCCESS
+java -jar context.jar <command> -h
 ```
 
-### Install Encyclopedia
+| command | what it does |
+|---------|--------------|
+| `percolator` | train Percolator on the background, apply it to the reference |
+| `mprophet` | train an mProphet LDA on the background, apply it to the reference |
+| `decoys` | add entrapment decoys to a mass list |
+| `features` | score an acquisition and split the features, without running an engine |
+| `bootstrap` | build a simulated targeted assay from a library |
 
-Run:
-
-```bash
-mvn org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file -Dfile=encyclopedia-6.6.24.jar -DpomFile=encyclopedia-6.6.24.pom
-```
-
-The command should also end with:
-
-```text
-BUILD SUCCESS
-```
-
-These commands install the dependencies in the local Maven repository, normally located at:
-
-```text
-Linux, macOS, or WSL: ~/.m2/repository/
-Windows:              %USERPROFILE%\.m2\repository\
-```
-
-The dependency JAR files should not be copied into the ContextGuide repository itself.
-
-### Download ContextGuide
-
-Navigate to the directory where you want to store the project, then clone the repository:
-
-```bash
-git clone https://github.com/shannon225/contextguide.git
-```
-
-Enter the repository:
-
-```bash
-cd contextguide
-```
-
-Use the `main` branch:
-
-```bash
-git switch main
-git pull origin main
-```
-
-Confirm the active branch:
-
-```bash
-git branch --show-current
-```
-
-The command should print:
-
-```text
-main
-```
-
-### Compile ContextGuide
-
-From the root of the ContextGuide repository, where `pom.xml` is located, run:
-
-```bash
-mvn clean compile
-```
-
-A successful compilation should end with:
-
-```text
-BUILD SUCCESS
-```
-
-Compiled class files will be placed under:
-
-```text
-target/classes/
-```
-
-### Verify the locally installed dependencies
-
-To verify that Maven recognizes the dependencies, run:
-
-```bash
-mvn dependency:tree
-```
-
-The output should include:
-
-```text
-maccoss:encyclopedia:jar:6.6.24
-org.searlelab:msrawjava-core:jar:26.7.1
-```
-
-### Updating ContextGuide later
-
-To retrieve future updates:
-
-```bash
-cd contextguide
-git switch main
-git pull origin main
-mvn clean compile
-```
-
-The two dependency files normally need to be installed only once for each computer and Maven installation.
-
-## Troubleshooting
-
-### Maven cannot find one of the dependency files
-
-Confirm that the terminal is currently in the directory containing all four dependency files:
-
-```bash
-ls
-```
-
-On Windows PowerShell, use:
-
-```powershell
-Get-ChildItem
-```
-
-Check that the filenames in the installation command exactly match the actual filenames.
-
-### Maven reports `Could not find artifact`
-
-Confirm that the local repository contains the installed artifacts.
-
-For Encyclopedia:
-
-```bash
-ls ~/.m2/repository/maccoss/encyclopedia/6.6.24/
-```
-
-For MSRawJava Core:
-
-```bash
-ls ~/.m2/repository/org/searlelab/msrawjava-core/26.7.1/
-```
-
-Each directory should contain both a `.jar` file and a `.pom` file.
-
-### Maven created `.lastUpdated` files
-
-A `.lastUpdated` file indicates that Maven previously failed to download or resolve an artifact.
-
-After successfully installing the dependency locally, remove stale markers with:
-
-```bash
-find ~/.m2/repository/maccoss/encyclopedia/6.6.24 -name '*.lastUpdated' -delete
-find ~/.m2/repository/org/searlelab/msrawjava-core/26.7.1 -name '*.lastUpdated' -delete
-```
-
-Then retry:
-
-```bash
-mvn clean compile
-```
-
-### Maven is using the wrong Java version
-
-Run:
-
-```bash
-mvn -version
-```
-
-Confirm that the reported Java version is Java 17. If it is not, update `JAVA_HOME` so that Maven uses the Java 17 JDK.

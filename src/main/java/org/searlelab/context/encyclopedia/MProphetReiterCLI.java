@@ -15,8 +15,9 @@ public class MProphetReiterCLI {
 			Logger.logLine("  2) Input FASTA");
 			Logger.logLine("  3) Threshold (e.g., 0.01)");
 			Logger.logLine("  4) Seed (e.g., 1)");
+			System.exit(1);
 		}
-		
+
 		SearchParameters params=SearchParameterParser.getDefaultParametersObject();
 		File inputTSV=new File(args[0]);
 		File fastaFile=new File(args[1]);
