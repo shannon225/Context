@@ -24,7 +24,7 @@ public class Context {
 				ContextPercolatorExecutor.main(remaining);
 				break;
 			case "mprophet":
-				ContextMProphetExecutor.main(remaining);
+//				ContextMProphetExecutor.main(remaining);
 				break;
 			case "features":
 				ContextFeatureScorer.parseCLIForScoringFeatures(remaining);
