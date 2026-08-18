@@ -6,7 +6,7 @@ import org.searlelab.context.io.MassListDecoyGenerator;
 import org.searlelab.context.io.TargetedBootstrapperCLI;
 import org.searlelab.context.mprophet.ContextFeatureScorer;
 import org.searlelab.context.mprophet.ContextMProphetExecutor;
-import org.searlelab.context.percolator.ContextPercolatorExecutor;
+import org.searlelab.context.percolator.ContextPercolatorExecutorCLI;
 
 public class Context {
 
@@ -21,7 +21,7 @@ public class Context {
 
 		switch (command) {
 			case "percolator":
-				ContextPercolatorExecutor.main(remaining);
+				ContextPercolatorExecutorCLI.main(remaining);
 				break;
 			case "mprophet":
 //				ContextMProphetExecutor.main(remaining);
