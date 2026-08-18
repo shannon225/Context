@@ -7,7 +7,7 @@ import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.CommandLineParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 
-import org.searlelab.context.io.ContextOptions;
+import org.searlelab.context.io.DirectoryOptions;
 import org.searlelab.context.io.RawFiles;
 
 public class ContextPercolatorExecutorCLI {
@@ -26,13 +26,13 @@ public class ContextPercolatorExecutorCLI {
 			float fdr = Float.parseFloat(arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
 			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("-pyisopep"));
 
-			if (arguments.containsKey("-background") || arguments.containsKey("-reference")) {
+			if (arguments.containsKey("-background") && arguments.containsKey("-reference")) {
 				File background = requiredFile(arguments, "-background");
 				File reference = requiredFile(arguments, "-reference");
 				File fasta = requiredFile(arguments, "-f");
-				File outputDirectory = ContextOptions.outputDirectory(arguments,
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments,
 						background.getAbsoluteFile().getParentFile());
-				String prefix = arguments.getOrDefault("-prefix", ContextOptions.stripSplitSuffix(background));
+				String prefix = arguments.getOrDefault("-prefix", DirectoryOptions.stripSplitSuffix(background));
 
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
 
@@ -43,10 +43,10 @@ public class ContextPercolatorExecutorCLI {
 				File library = requiredFile(arguments, "-l");
 				File fasta = requiredFile(arguments, "-f");
 				File massList = requiredFile(arguments, "-massList");
-				File outputDirectory = ContextOptions.outputDirectory(arguments,
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments,
 						dia.getAbsoluteFile().getParentFile());
 				String prefix = arguments.get("-prefix");
-				boolean generateDecoys = ContextOptions.isEnabled(arguments, "-generateDecoys");
+				boolean generateDecoys = DirectoryOptions.isEnabled(arguments, "-generateDecoys");
 
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
 

@@ -4,12 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
-public class ContextOptions {
+public class DirectoryOptions {
 
 	public static final String MODEL_DIRECTORY = "model";
 	public static final String WORK_DIRECTORY = "work";
 
-	private ContextOptions() {
+	private DirectoryOptions() {
 	}
 
 	public static boolean isEnabled(HashMap<String, String> arguments, String flag) {

@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.searlelab.context.mprophet.IsolationWindow;
+import org.searlelab.context.datastructures.IsolationWindow;
 
 public class IsolationWindowReader {
 

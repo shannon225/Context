@@ -13,6 +13,7 @@ import java.util.Objects;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.searlelab.context.datastructures.ScoredFeature;
 
 public class ContextFeatureScorerTest {
 

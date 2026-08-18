@@ -17,7 +17,7 @@ import java.util.HashSet;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.io.FeatureTable;
+import org.searlelab.context.datastructures.FeatureTable;
 
 public class FeatureTableTest {
 	private static final double EPSILON = 1e-9;

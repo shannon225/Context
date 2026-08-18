@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.searlelab.context.datastructures.IsolationWindow;
+
 import edu.washington.gs.maccoss.encyclopedia.datastructures.AminoAcidConstants;
 import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.PecanParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.CommandLineParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 import edu.washington.gs.maccoss.encyclopedia.utils.massspec.PeptideUtils;
-
-import org.searlelab.context.mprophet.IsolationWindow;
 
 public class MassListDecoyGenerator {
 
@@ -57,7 +57,7 @@ public class MassListDecoyGenerator {
 			return massList;
 		}
 
-		ContextOptions.makeDirectory(outputDirectory);
+		DirectoryOptions.makeDirectory(outputDirectory);
 		File output = new File(outputDirectory, prefix + GENERATED_SUFFIX);
 		Logger.logLine("Mass list " + massList.getName() + " has no decoys; generating entrapment decoys");
 		write(addDecoys(massList.getAbsolutePath()), output);
@@ -84,7 +84,7 @@ public class MassListDecoyGenerator {
 
 	private static void write(ArrayList<IsolationWindow> windows, File output) throws IOException {
 		Path parent = output.getAbsoluteFile().toPath().getParent();
-		if (parent != null) ContextOptions.makeDirectory(parent.toFile());
+		if (parent != null) DirectoryOptions.makeDirectory(parent.toFile());
 
 		new TargetedBootstrapper().writeAssayList(windows, output.toPath());
 

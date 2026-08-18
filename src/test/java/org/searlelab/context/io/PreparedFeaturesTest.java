@@ -13,8 +13,8 @@ import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.io.FeatureTable;
-import org.searlelab.context.io.PreparedFeatures;
+import org.searlelab.context.datastructures.FeatureTable;
+import org.searlelab.context.datastructures.PreparedFeatures;
 
 public class PreparedFeaturesTest {
 

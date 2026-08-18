@@ -13,9 +13,9 @@ import java.util.HashMap;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.io.ContextOptions;
+import org.searlelab.context.datastructures.IsolationWindow;
+import org.searlelab.context.io.DirectoryOptions;
 import org.searlelab.context.io.MassListDecoyGenerator;
-import org.searlelab.context.mprophet.IsolationWindow;
 
 public class MassListDecoyGeneratorTest {
 
@@ -112,19 +112,19 @@ public class MassListDecoyGeneratorTest {
 	public void bareFlagMeansTrueAndExplicitFalseMeansFalse() {
 		HashMap<String, String> bare = new HashMap<>();
 		bare.put("-generateDecoys", null);
-		assertTrue(ContextOptions.isEnabled(bare, "-generateDecoys"));
+		assertTrue(DirectoryOptions.isEnabled(bare, "-generateDecoys"));
 
 		HashMap<String, String> explicit = new HashMap<>();
 		explicit.put("-generateDecoys", "false");
-		assertFalse(ContextOptions.isEnabled(explicit, "-generateDecoys"));
+		assertFalse(DirectoryOptions.isEnabled(explicit, "-generateDecoys"));
 
-		assertFalse(ContextOptions.isEnabled(new HashMap<String, String>(), "-generateDecoys"));
+		assertFalse(DirectoryOptions.isEnabled(new HashMap<String, String>(), "-generateDecoys"));
 	}
 
 	@Test
 	public void enginesGetTheirOwnDirectoriesUnderOneOutputDirectory() throws IOException {
-		File mprophet = ContextOptions.engineDirectory(folder.getRoot(), "mprophet");
-		File percolator = ContextOptions.engineDirectory(folder.getRoot(), "percolator");
+		File mprophet = DirectoryOptions.engineDirectory(folder.getRoot(), "mprophet");
+		File percolator = DirectoryOptions.engineDirectory(folder.getRoot(), "percolator");
 
 		assertTrue(mprophet.isDirectory());
 		assertTrue(percolator.isDirectory());

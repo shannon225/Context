@@ -23,9 +23,8 @@ import org.searlelab.msrawjava.model.FragmentScan;
 import org.searlelab.msrawjava.model.PrecursorScan;
 import org.searlelab.msrawjava.model.WindowData;
 import org.searlelab.msrawjava.model.Range;
+import org.searlelab.context.datastructures.IsolationWindow;
 import org.searlelab.msrawjava.io.encyclopedia.EncyclopeDIAFile;
-
-import org.searlelab.context.mprophet.IsolationWindow;
 
 public class TargetedBootstrapper {
 

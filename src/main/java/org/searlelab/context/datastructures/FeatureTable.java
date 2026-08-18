@@ -1,4 +1,4 @@
-package org.searlelab.context.io;
+package org.searlelab.context.datastructures;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

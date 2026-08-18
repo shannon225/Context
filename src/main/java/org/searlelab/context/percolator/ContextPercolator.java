@@ -20,9 +20,9 @@ import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 
-import org.searlelab.context.io.ContextOptions;
-import org.searlelab.context.io.FeatureTable;
-import org.searlelab.context.io.PreparedFeatures;
+import org.searlelab.context.datastructures.FeatureTable;
+import org.searlelab.context.datastructures.PreparedFeatures;
+import org.searlelab.context.io.DirectoryOptions;
 
 public class ContextPercolator {
 	public static final String ENGINE_NAME = "percolator";
@@ -47,9 +47,9 @@ public class ContextPercolator {
 
 		requireReadable(fasta, "FASTA file");
 
-		File engineDirectory = ContextOptions.engineDirectory(outputDirectory, ENGINE_NAME);
-		File workingDirectory = ContextOptions.subdirectory(engineDirectory, ContextOptions.WORK_DIRECTORY);
-		File modelDirectory = ContextOptions.subdirectory(engineDirectory, ContextOptions.MODEL_DIRECTORY);
+		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, ENGINE_NAME);
+		File workingDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.WORK_DIRECTORY);
+		File modelDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.MODEL_DIRECTORY);
 
 		PreparedFeatures prepared = PreparedFeatures.prepare(backgroundFeatures, referenceFeatures, workingDirectory,
 				prefix);

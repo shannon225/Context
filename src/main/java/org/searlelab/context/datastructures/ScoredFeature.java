@@ -1,4 +1,4 @@
-package org.searlelab.context.mprophet;
+package org.searlelab.context.datastructures;
 
 
 public class ScoredFeature {
