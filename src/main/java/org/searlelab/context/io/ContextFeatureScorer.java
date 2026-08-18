@@ -1,4 +1,4 @@
-package org.searlelab.context.mprophet;
+package org.searlelab.context.io;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -27,8 +27,6 @@ import org.searlelab.context.datastructures.IsolationWindow;
 import org.searlelab.context.datastructures.ScoredFeature;
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
 import org.searlelab.context.encyclopedia.SearchToBLIB;
-import org.searlelab.context.io.IsolationWindowReader;
-import org.searlelab.context.io.RawFiles;
 
 public class ContextFeatureScorer {
 
@@ -53,7 +51,7 @@ public class ContextFeatureScorer {
 		File library = new File(libraryFilePath);
 
 		try {
-			ArrayList<ScoredFeature> partitionedFeatures = scoreFeatures(library, rawFile, fasta, baseName, massListPath);
+			ArrayList<ScoredFeature> partitionedFeatures = scoreFeaturesForContext(library, rawFile, fasta, baseName, massListPath);
 			System.out.println("Scored and partitioned " + partitionedFeatures.size() + " features.");
 		} catch (Exception e) {
 			System.out.println("Something did not work... see the error tace");
@@ -106,7 +104,7 @@ public class ContextFeatureScorer {
 	
 	// Changed isFeatureOnMassList to only check for peptide sequence equivalence, not for mass, charge and RT equivalence. I don't think is needed, but keeping for now. 
 
-	public static ArrayList<ScoredFeature> scoreFeatures(File library, File rawFile, File fasta, String baseName,
+	public static ArrayList<ScoredFeature> scoreFeaturesForContext(File library, File rawFile, File fasta, String baseName,
 			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
 
 		// Run an Encyclopedia job
@@ -222,5 +220,112 @@ public class ContextFeatureScorer {
 
 		System.out.println("Reference target features: " + referenceFeatures.size());
 		return partitionedFeatures;
+	}
+	
+	// Scores features from a global experiment
+	public static ArrayList<ScoredFeature> scoreFeatures(File library, File rawFile, File fasta, String baseName,
+			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
+		
+		// Run an Encyclopedia job
+				SearchParameters params = SearchParameterParser.getDefaultParametersObject();
+				LibraryScoringFactory scoringForLibrary = EncyclopediaScoringFactory.getDefaultScoringFactory(params);
+				LibraryInterface interfaceForLibrary = BlibToLibraryConverter.getFile(library, fasta, params);
+				
+				File outputPrefix = new File(baseName);
+				
+				EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(rawFile, fasta, interfaceForLibrary, interfaceForLibrary, outputPrefix, scoringForLibrary);
+
+				ProgressIndicator progress = new EmptyProgressIndicator(true);
+				org.searlelab.msrawjava.io.StripeFileInterface interfaceForStripeFile = job.getDiaFileReader();
+
+				// Run Encyclopedia job to get the feature file
+				File featuresToSplit = job.getPercolatorFiles().getInputTSV();
+
+				if (featuresToSplit.exists() && featuresToSplit.canRead()) {
+					System.out.println("Feature file already exists, skipping feature calculation!");
+					System.out.println(featuresToSplit.getAbsolutePath());
+				} else {
+					System.out.println("Calculating features...");
+					EncyclopediaTwo.generateFeatureFile(progress, interfaceForLibrary, job,
+							interfaceForStripeFile, java.util.Optional.empty());
+				}
+
+				ArrayList<ScoredFeature> uniqueFeatures = new ArrayList<>();
+				ArrayList<ScoredFeature> uniqueFeaturesList = uniqueFeatures;
+				HashMap<String, ScoredFeature> bestFeatureByPeptide = new HashMap<>();
+				String header;
+				
+				// Read all rows the feature file
+				try (BufferedReader br = new BufferedReader(new FileReader(featuresToSplit))) {
+					header = br.readLine();
+					if (header == null) {
+						throw new IOException("Feature file is empty, so no file could be read.");
+					}
+					
+					String[] headerColumns = header.split("\t", -1);
+					
+					int precursorMzIndex = findColumnIndex(headerColumns, "precursorMz");
+					int isDecoyIndex = findColumnIndex(headerColumns, "Label");
+					int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
+					int primaryScoreIndex = findColumnIndex(headerColumns, "primary");
+					int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
+					int sequenceIndex = findColumnIndex(headerColumns, "sequence");
+					int proteinIndex = findColumnIndex(headerColumns, "Proteins");
+					
+					String line;
+					while ((line = br.readLine()) != null) {
+						String columns[] = line.split("\t", -1);
+
+						double mz = Double.parseDouble(columns[precursorMzIndex]);
+						byte featureCharge = PercolatorPeptide.getCharge(columns[0]);
+						boolean isDecoy = Integer.parseInt(columns[isDecoyIndex]) == -1;
+						float primary = Float.parseFloat(columns[primaryScoreIndex]);
+						float retentionTime = Float.parseFloat(columns[retentionTimeIndex]);
+						String sequence = columns[sequenceIndex];
+						String protein = columns[proteinIndex];
+
+						ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence, protein, line);
+
+						uniqueFeaturesList.add(feature);
+
+						ScoredFeature currentBest = bestFeatureByPeptide.get(sequence);
+
+						// Take the peptide with a higher primary score and place it on a new list
+						if (currentBest == null || feature.getPrimary() > currentBest.getPrimary()) {
+							bestFeatureByPeptide.put(sequence, feature);
+						}
+					}
+				}
+				
+				ArrayList<ScoredFeature> bestFeatures = new ArrayList<>(bestFeatureByPeptide.values());
+				bestFeatures.sort(Comparator.comparing(ScoredFeature::getPrimary).reversed());
+
+				System.out.println("Selecting the betst feature per peptide..." + bestFeatures.size() + " peptides remain.");
+
+
+				// Output Paths
+				String featureOutputPath = baseName + ".features.txt";
+
+				// Output Files
+				File featureOutput = new File(featureOutputPath);
+
+				ArrayList<ScoredFeature> featuresList = new ArrayList<>();
+
+				ArrayList<ScoredFeature> partitionedFeatures = new ArrayList<>(); // so that the return is all of the features
+
+				for (ScoredFeature feature : bestFeatures) {
+
+					ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(), feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(), feature.getOriginalLine());
+					partitionedFeatures.add(annotatedFeature);
+
+					if (annotatedFeature!=null) {
+						featuresList.add(feature); 
+					}
+				}
+				
+				writeScoredFeatures(featureOutput, featuresList, header);
+
+				System.out.println("Target features: " + featuresList.size());
+				return partitionedFeatures;
 	}
 }

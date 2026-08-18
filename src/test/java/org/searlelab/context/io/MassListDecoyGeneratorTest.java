@@ -24,9 +24,9 @@ public class MassListDecoyGeneratorTest {
 
 	private File targetsOnly() throws IOException {
 		return write("assay.csv",
-				"Compound,Formula,Adduct,m/z,z,RT Time (min),Window (min)",
-				"AHSQDENK,,(no adduct),464.7095878086647,2,13.984958,5.0",
-				"LPFPIIDDK,,(no adduct),521.7899,2,25.0,5.0");
+				"Compound,Formula,Adduct,m/z,z,RT Time (min),Window (min),isDecoy",
+				"AHSQDENK,,(no adduct),464.7095878086647,2,13.984958,5.0,FALSE",
+				"LPFPIIDDK,,(no adduct),521.7899,2,25.0,5.0,FALSE");
 	}
 
 	@Test

@@ -45,8 +45,8 @@ public class IsolationWindowReader {
 				float rtMin = (rtCenter - (rtWindow / 2)) * 60;
 				float rtMax = (rtCenter + (rtWindow / 2)) * 60;
 
-				boolean isDecoy = Boolean.parseBoolean(columns[7]);
-
+				boolean isDecoy = (columns.length > 7 ? Boolean.parseBoolean(columns[7]) : false);
+				
 				// Assemble each window
 				IsolationWindow window = new IsolationWindow(peptide, targetMz, charge, rtMin, rtMax, isDecoy);
 				isolationWindows.add(window);

@@ -50,7 +50,7 @@ public class ContextPercolatorExecutorCLI {
 
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
 
-				ContextPercolatorExecutor.runEndToEnd(library, fasta, dia, massList, pyIsoPEP, fdr, outputDirectory, prefix, generateDecoys,
+				ContextPercolatorExecutor.runContextPercolator(library, fasta, dia, massList, pyIsoPEP, fdr, outputDirectory, prefix, generateDecoys,
 						encyclopediaArgs);
 			}
 		} catch (Exception e) {
@@ -87,7 +87,7 @@ public class ContextPercolatorExecutorCLI {
 		Logger.timelessLogLine("Context-mode Percolator: train the discriminant on background peptides,");
 		Logger.timelessLogLine("then transfer it to the targeted reference peptides without retraining.");
 		Logger.timelessLogLine("");
-		Logger.timelessLogLine("End-to-end from a raw file:");
+		Logger.timelessLogLine("End-to-end Context Percolator from a raw file:");
 		Logger.timelessLogLine("  -i        <file>   acquisition: " + RawFiles.supportedExtensions());
 		Logger.timelessLogLine("  -l        <file>   library (.elib preferred, .dlib accepted)");
 		Logger.timelessLogLine("  -f        <file>   FASTA protein database");

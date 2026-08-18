@@ -3,7 +3,8 @@ package org.searlelab.context.mprophet;
 import java.io.File;
 
 import org.searlelab.context.encyclopedia.MProphetReiter;
-import org.searlelab.context.mprophet.ContextFeatureScorer;
+import org.searlelab.context.io.ContextFeatureScorer;
+
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetExecutionData;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetResult;
 import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
@@ -24,7 +25,7 @@ public class ContextMProphetExecutor {
 
 		// Score features in the .dia file against the library, split the results
 		try {
-			ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 			File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
@@ -89,7 +90,7 @@ public class ContextMProphetExecutor {
 						
 					}
 
-					ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+					ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
 					String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 					File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
@@ -131,7 +132,7 @@ public class ContextMProphetExecutor {
 
 		// Score features in the .dia file against the library, split the results
 		try {
-			ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 			File featureFile = new File(featureFileName + ".features.txt");
@@ -192,7 +193,7 @@ public class ContextMProphetExecutor {
 			}
 
 			try {
-				ContextFeatureScorer.scoreFeatures(library, diaFile, fasta, baseName, massListFile.getAbsolutePath());
+				ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListFile.getAbsolutePath());
 
 				File featureFile = new File(baseName + ".features.txt");
 

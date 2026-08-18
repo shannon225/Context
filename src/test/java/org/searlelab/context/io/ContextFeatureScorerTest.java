@@ -1,4 +1,4 @@
-package org.searlelab.context.mprophet;
+package org.searlelab.context.io;
 
 import static org.junit.Assert.*;
 
@@ -14,6 +14,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.searlelab.context.datastructures.ScoredFeature;
+import org.searlelab.context.io.ContextFeatureScorer;
 
 public class ContextFeatureScorerTest {
 
@@ -49,7 +50,7 @@ public class ContextFeatureScorerTest {
 		
 		String baseName = rawFile.toString().replaceFirst("\\.dia$", "");
 
-			ArrayList<ScoredFeature> partitionedFeatures = ContextFeatureScorer.scoreFeatures(library, rawFile, fasta, baseName, massListPath);
+			ArrayList<ScoredFeature> partitionedFeatures = ContextFeatureScorer.scoreFeaturesForContext(library, rawFile, fasta, baseName, massListPath);
 			assertNotNull(partitionedFeatures);
 			
 			System.out.println(partitionedFeatures.size() + " features scored and partitioned.");
