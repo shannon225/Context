@@ -1,8 +1,14 @@
 package org.searlelab.context.percolator;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 
+import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorExecutor;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.CommandLineParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
@@ -25,6 +31,22 @@ public class ContextPercolatorExecutorCLI {
 		try {
 			float fdr = Float.parseFloat(arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
 			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("-pyisopep"));
+
+			boolean standardPercolator = DirectoryOptions.isEnabled(arguments, "-standardPercolator");
+			
+			if (standardPercolator) {
+				File features = requiredFile(arguments, "-features");
+				File fasta = requiredFile(arguments, "-f");
+				
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments, features.getAbsoluteFile().getParentFile());
+				
+				String prefix = arguments.getOrDefault("-prefix", stripFeatureSuffix(features));
+				
+				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
+				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs);
+				
+			}
+			
 
 			if (arguments.containsKey("-background") && arguments.containsKey("-reference")) {
 				File background = requiredFile(arguments, "-background");
@@ -63,14 +85,17 @@ public class ContextPercolatorExecutorCLI {
 	private static HashMap<String, String> encyclopediaArguments(HashMap<String, String> arguments) {
 		HashMap<String, String> parameters = SearchParameterParser.getDefaultParameters();
 		for (String contextFlag : new String[] { "-i", "-l", "-f", "-massList", "-fdr", "-o", "-outdir", "-prefix",
-				"-background", "-reference", "-pyisopep", "-generateDecoys", "-h", "-help", "--help" }) {
+				"-background", "-reference", "features", "standardPercolator", "-pyisopep", "-generateDecoys", "-h", "-help", "--help" }) {
 			arguments.remove(contextFlag);
 		}
 		parameters.putAll(arguments);
 		return parameters;
 	}
 
-
+	private static String stripFeatureSuffix(File featureFile) {
+	    return featureFile.getName()
+	            .replaceFirst("\\.features\\.txt$", "");
+	}
 
 	private static File requiredFile(HashMap<String, String> arguments, String flag) {
 		String value = arguments.get(flag);
@@ -81,11 +106,19 @@ public class ContextPercolatorExecutorCLI {
 		}
 		return new File(value);
 	}
-
+	
+	
 	private static void printHelp() {
 		Logger.timelessLogLine("ContextPercolatorExecutor");
-		Logger.timelessLogLine("Context-mode Percolator: train the discriminant on background peptides,");
+		Logger.timelessLogLine("Run either standard Percolator cross-validation or Context-Percolator mode: train the discriminant on background peptides,");
 		Logger.timelessLogLine("then transfer it to the targeted reference peptides without retraining.");
+		Logger.timelessLogLine("Add -standardPercolator to run standard cross-validation.");
+		Logger.timelessLogLine("Without it, the executor runs the Context background/reference workflow.");
+		Logger.timelessLogLine("");
+		Logger.timelessLogLine("Standard Percolator cross-validation:");
+		Logger.timelessLogLine("  -standardPercolator enable standard Percolator mode");
+		Logger.timelessLogLine("  -features <file>    complete, unsplit feature TSV");
+		Logger.timelessLogLine("  -f        <file>    FASTA protein database");
 		Logger.timelessLogLine("");
 		Logger.timelessLogLine("End-to-end Context Percolator from a raw file:");
 		Logger.timelessLogLine("  -i        <file>   acquisition: " + RawFiles.supportedExtensions());
@@ -105,7 +138,7 @@ public class ContextPercolatorExecutorCLI {
 		Logger.timelessLogLine("  -generateDecoys    add entrapment decoys when the mass list has none;");
 		Logger.timelessLogLine("                     a list that already has decoys is used unchanged");
 		Logger.timelessLogLine("");
-		Logger.timelessLogLine("pyIsoPEP, which estimates the q-values and PEPs:");
+		Logger.timelessLogLine("pyIsoPEP, which estimates the q-values and PEPs for Context Percolator:");
 		Logger.timelessLogLine("  -pyisopep <path>   pyisopep executable (default: look for it on PATH)");
 		Logger.timelessLogLine("                     install with `pip install pyIsoPEP`;");
 		Logger.timelessLogLine("                     the Context container image already has it");

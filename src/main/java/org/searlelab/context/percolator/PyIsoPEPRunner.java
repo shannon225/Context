@@ -57,6 +57,39 @@ public class PyIsoPEPRunner {
 		}
 		return table;
 	}
+	
+	public Table runD2PEP(File targetInput,File decoyInput,File outputFile,String scoreColumn) throws IOException, InterruptedException {
+
+	    List<String> arguments = Arrays.asList(
+	            "d2pep",
+	            "--target-file", targetInput.getAbsolutePath(),
+	            "--decoy-file", decoyInput.getAbsolutePath(),
+	            "--score-col", scoreColumn,
+	            "--calc-q-from-fdr",
+	            "--output", outputFile.getAbsolutePath());
+
+	    List<String> command = buildCommand(arguments);
+	    Logger.logLine("Running pyIsoPEP: " + String.join(" ", command));
+	    run(command, outputFile);
+
+	    if (!outputFile.exists() || !outputFile.canRead()) {
+	        throw new IOException(
+	                "pyIsoPEP reported success but wrote no output to "
+	                        + outputFile.getAbsolutePath()
+	        );
+	    }
+
+	    Table table = Table.read(outputFile);
+
+	    for (String required : new String[] {Q_VALUE_COLUMN,PEP_COLUMN}) {
+	        if (table.indexOf(required) < 0) {
+	            throw new IOException("pyIsoPEP output " + outputFile.getName() + " has no [" + required + "] column. Found: " + Arrays.toString(table.getHeader())
+	            );
+	        }
+	    }
+
+	    return table;
+	}
 
 	private List<String> buildCommand(List<String> arguments) {
 		String resolved = executable != null ? executable : findOnPath();

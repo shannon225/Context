@@ -1,6 +1,10 @@
 package org.searlelab.context.percolator;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.nio.file.Files;
@@ -50,7 +54,7 @@ public class ContextPercolatorExecutor {
 				pyIsoPEP, fdr, outputDirectory, resolvedPrefix);
 	}
 	
-	public static PercolatorExecutionData runStandardPercolator(File allFeatures, File fasta, float fdr, File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs) throws IOException, InterruptedException {
+	public static PercolatorExecutionData runStandardPercolator(File allFeatures, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs) throws IOException, InterruptedException {
 		
 		if (!allFeatures.exists() || !allFeatures.canRead()) {
 			throw new IOException("Feature file not found or is unreadable: " + allFeatures.getAbsolutePath());
@@ -70,7 +74,7 @@ public class ContextPercolatorExecutor {
 			parameterMap.putAll(encyclopediaArgs);
 		}
 		
-		parameterMap.put("-perfectorThreshold",  Float.toString(fdr));
+		parameterMap.put("-percolatorThreshold",  Float.toString(fdr));
 		SearchParameters parameters = SearchParameterParser.parseParameters(parameterMap);
 		
 		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, STANDARD_ENGINE_NAME);
@@ -96,5 +100,51 @@ public class ContextPercolatorExecutor {
 		
 	}
 	
+	private static void preparePercolatorOutputForPyIsoPEP(File source, File destination) throws IOException {
+
+	    try (BufferedReader reader = new BufferedReader(new FileReader(source));
+	            BufferedWriter writer = new BufferedWriter(new FileWriter(destination))) {
+	        String line;
+
+	        while ((line = reader.readLine()) != null) {
+	            if (line.startsWith(PercolatorExecutor.PI_0_TAG)) {
+	                continue;
+	            }
+
+	            if (line.trim().isEmpty()) {
+	                continue;
+	            }
+
+	            writer.write(line);
+	            writer.newLine();
+	        }
+	    }
+	}
 	
+	private static int countPassingPyIsoPEPPeptides(PyIsoPEPRunner.Table table,float fdr) throws IOException {
+
+	    if (table.indexOf(PyIsoPEPRunner.Q_VALUE_COLUMN) < 0) {
+	        throw new IOException("pyIsoPEP output is missing the q-value column: "+ PyIsoPEPRunner.Q_VALUE_COLUMN);
+	    }
+
+	    int passing = 0;
+
+	    for (String[] row : table.getRows()) {
+	        String value = table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN);
+
+	        try {
+	            if (Double.parseDouble(value.trim()) <= fdr) {
+	                passing++;
+	            }
+	            
+	        } catch (NumberFormatException e) {
+	            throw new IOException(
+	                    "Could not parse pyIsoPEP q-value: " + value,
+	                    e
+	            );
+	        }
+	    }
+
+	    return passing;
+	}
 }

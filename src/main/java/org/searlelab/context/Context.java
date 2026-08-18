@@ -20,9 +20,7 @@ public class Context {
 		String[] remaining = Arrays.copyOfRange(args, 1, args.length);
 
 		switch (command) {
-			case "percolator-context":
-				ContextPercolatorExecutorCLI.main(remaining);
-				break;
+
 			case "percolator":
 				ContextPercolatorExecutorCLI.main(remaining);
 				break;
