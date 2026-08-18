@@ -20,6 +20,9 @@ public class Context {
 		String[] remaining = Arrays.copyOfRange(args, 1, args.length);
 
 		switch (command) {
+			case "percolator-context":
+				ContextPercolatorExecutorCLI.main(remaining);
+				break;
 			case "percolator":
 				ContextPercolatorExecutorCLI.main(remaining);
 				break;
@@ -53,7 +56,8 @@ public class Context {
 		System.out.println("Usage: java -jar context.jar <command> [options]");
 		System.out.println();
 		System.out.println("Commands:");
-		System.out.println("  percolator   train a Percolator SVM on the background, apply it to the reference peptides");
+		System.out.println("  percolator-context   train a Percolator SVM on the background, apply it to the reference peptides");
+		System.out.println("  percolator   train a Percolator SVM model and apply it to the dataset using cross-validation");
 		System.out.println("  mprophet     train an mProphet LDA on the background, apply it to the reference peptides");
 		System.out.println("  features     score an acquisition and split features into reference and background");
 		System.out.println("  bootstrap    build a targeted assay / mass list from a library");
