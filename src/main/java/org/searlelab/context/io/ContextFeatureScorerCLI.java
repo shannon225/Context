@@ -18,8 +18,8 @@ public class ContextFeatureScorerCLI {
 	private static final Pattern MASKED_SEED_PATTERN = Pattern.compile("_masked([0-9]+)(?=_|\\.)",
 			Pattern.CASE_INSENSITIVE);
 
-	private static final Set<String> ALLOWED_ARGUMENTS = Set.of("-library", "-fasta", "-dia-folder", "-start-seed",
-			"-end-seed");
+	private static final Set<String> ALLOWED_ARGUMENTS = Set.of("--library", "--fasta", "--dia-folder", "--start-seed",
+			"--end-seed");
 
 	public static void main(String[] args) {
 
@@ -31,18 +31,18 @@ public class ContextFeatureScorerCLI {
 		try {
 			Map<String, String> arguments = parseArguments(args);
 
-			File library = requireReadableFile("Library", requireArgument(arguments, "-library"));
+			File library = requireReadableFile("Library", requireArgument(arguments, "--library"));
 
-			File fasta = requireReadableFile("FASTA", requireArgument(arguments, "-fasta"));
+			File fasta = requireReadableFile("FASTA", requireArgument(arguments, "--fasta"));
 
-			File diaFolder = requireReadableDirectory("DIA folder", requireArgument(arguments, "-dia-folder"));
+			File diaFolder = requireReadableDirectory("DIA folder", requireArgument(arguments, "--dia-folder"));
 
-			int startSeed = parseNonNegativeInteger(arguments.getOrDefault("-start-seed", Integer.toString(DEFAULT_START_SEED)), "-start-seed");
+			int startSeed = parseNonNegativeInteger(arguments.getOrDefault("--start-seed", Integer.toString(DEFAULT_START_SEED)), "-start-seed");
 
-			int endSeed = parseNonNegativeInteger(arguments.getOrDefault("-end-seed", Integer.toString(DEFAULT_END_SEED)), "-end-seed");
+			int endSeed = parseNonNegativeInteger(arguments.getOrDefault("--end-seed", Integer.toString(DEFAULT_END_SEED)), "-end-seed");
 
 			if (endSeed < startSeed) {
-				throw new IllegalArgumentException("-end-seed must be greater than or equal to -start-seed.");
+				throw new IllegalArgumentException("--end-seed must be greater than or equal to --start-seed.");
 			}
 
 			List<InputPair> inputs = findInputPairs(diaFolder, startSeed, endSeed);
@@ -187,7 +187,7 @@ public class ContextFeatureScorerCLI {
 		for (int index = 0; index < args.length; index++) {
 			String flag = args[index];
 
-			if (!flag.startsWith("-]")) {
+			if (!flag.startsWith("--")) {
 				throw new IllegalArgumentException("Expected a named argument, but found: " + flag);
 			}
 
@@ -271,17 +271,17 @@ public class ContextFeatureScorerCLI {
 
 	private static void printUsage() {
 		System.out.println("Usage:");
-		System.out.println("  ContextFeatureScorerCLI " + "-library <library.elib> " + "-fasta <proteins.fasta> "
+		System.out.println("  ContextFeatureScorerCLI " + "--library <library.elib> " + "--fasta <proteins.fasta> "
 				+ "--dia-folder <folder> " + "[--start-seed <integer>] " + "[--end-seed <integer>]");
 		System.out.println();
 		System.out.println("Required:");
-		System.out.println("  -library      Spectral library used for scoring.");
-		System.out.println("  -fasta        FASTA protein database.");
-		System.out.println("  -dia-folder   Folder containing paired .dia and .txt files.");
+		System.out.println("  --library      Spectral library used for scoring.");
+		System.out.println("  --fasta        FASTA protein database.");
+		System.out.println("  --dia-folder   Folder containing paired .dia and .txt files.");
 		System.out.println();
 		System.out.println("Optional:");
-		System.out.println("  -start-seed   First masked seed to process; default: " + DEFAULT_START_SEED);
-		System.out.println("  -end-seed     Last masked seed to process; default: " + DEFAULT_END_SEED);
+		System.out.println("  --start-seed   First masked seed to process; default: " + DEFAULT_START_SEED);
+		System.out.println("  --end-seed     Last masked seed to process; default: " + DEFAULT_END_SEED);
 		System.out.println();
 		System.out.println("Expected filename pairs:");
 		System.out.println("  example_masked1_assay.dia");
