@@ -38,7 +38,7 @@ public class ContextPercolatorExecutorCLI {
 				
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
 				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs);
-				
+				return;
 			}
 			
 
@@ -79,7 +79,7 @@ public class ContextPercolatorExecutorCLI {
 	private static HashMap<String, String> encyclopediaArguments(HashMap<String, String> arguments) {
 		HashMap<String, String> parameters = SearchParameterParser.getDefaultParameters();
 		for (String contextFlag : new String[] { "-i", "-l", "-f", "-massList", "-fdr", "-o", "-outdir", "-prefix",
-				"-background", "-reference", "features", "standardPercolator", "-pyisopep", "-generateDecoys", "-h", "-help", "--help" }) {
+				"-background", "-reference", "-features", "-standardPercolator", "-pyisopep", "-generateDecoys", "-h", "-help", "--help" }) {
 			arguments.remove(contextFlag);
 		}
 		parameters.putAll(arguments);

@@ -19,6 +19,7 @@ import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.BlibToLibraryConverter;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryInterface;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
+import edu.washington.gs.maccoss.encyclopedia.utils.massspec.PeptideUtils;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.EmptyProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.ProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorPeptide;
@@ -61,15 +62,18 @@ public class ContextFeatureScorer {
 		}
 		}
 
-	static IsolationWindow findMatchingMassListWindow(ScoredFeature feature, ArrayList<IsolationWindow> targetWindows) {
+	static IsolationWindow findMatchingMassListWindow(ScoredFeature feature, ArrayList<IsolationWindow> targetWindows, SearchParameters parameters) {
 		String sequence = cleanPeptideSequence(feature.getSequence());
 
 		for (IsolationWindow window : targetWindows) {
 			String compound = cleanPeptideSequence(window.getCompound());
+			
+			String encyclopediaDecoy = PeptideUtils.reverse(compound, parameters.getAAConstants());
 
-			if (compound.equals(sequence)) {
-				return window;
-			}
+		        if (compound.equals(sequence)
+		                || encyclopediaDecoy.equals(sequence)) {
+		            return window;
+		        }
 		}
 		return null;
 	}
@@ -201,7 +205,7 @@ public class ContextFeatureScorer {
 		ArrayList<ScoredFeature> partitionedFeatures = new ArrayList<>(); // so that the return is all of the features
 
 		for (ScoredFeature feature : bestFeatures) {
-			IsolationWindow matchingWindow = findMatchingMassListWindow(feature, targetWindows);
+			IsolationWindow matchingWindow = findMatchingMassListWindow(feature, targetWindows, params);
 
 			boolean isOnMassList = matchingWindow != null;
 			boolean isBackground = !isOnMassList;
@@ -250,11 +254,9 @@ public class ContextFeatureScorer {
 							interfaceForStripeFile, java.util.Optional.empty());
 				}
 
-				ArrayList<ScoredFeature> uniqueFeatures = new ArrayList<>();
-				ArrayList<ScoredFeature> uniqueFeaturesList = uniqueFeatures;
-				HashMap<String, ScoredFeature> bestFeatureByPeptide = new HashMap<>();
 				String header;
-				
+				ArrayList<ScoredFeature> allFeatures = new ArrayList<>();
+
 				// Read all rows the feature file
 				try (BufferedReader br = new BufferedReader(new FileReader(featuresToSplit))) {
 					header = br.readLine();
@@ -285,24 +287,11 @@ public class ContextFeatureScorer {
 						String protein = columns[proteinIndex];
 
 						ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence, protein, line);
+						allFeatures.add(feature);
 
-						uniqueFeaturesList.add(feature);
-
-						ScoredFeature currentBest = bestFeatureByPeptide.get(sequence);
-
-						// Take the peptide with a higher primary score and place it on a new list
-						if (currentBest == null || feature.getPrimary() > currentBest.getPrimary()) {
-							bestFeatureByPeptide.put(sequence, feature);
-						}
 					}
 				}
 				
-				ArrayList<ScoredFeature> bestFeatures = new ArrayList<>(bestFeatureByPeptide.values());
-				bestFeatures.sort(Comparator.comparing(ScoredFeature::getPrimary).reversed());
-
-				System.out.println("Selecting the betst feature per peptide..." + bestFeatures.size() + " peptides remain.");
-
-
 				// Output Paths
 				String featureOutputPath = baseName + ".features.txt";
 
@@ -313,7 +302,7 @@ public class ContextFeatureScorer {
 
 				ArrayList<ScoredFeature> partitionedFeatures = new ArrayList<>(); // so that the return is all of the features
 
-				for (ScoredFeature feature : bestFeatures) {
+				for (ScoredFeature feature : allFeatures) {
 
 					ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(), feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(), feature.getOriginalLine());
 					partitionedFeatures.add(annotatedFeature);
