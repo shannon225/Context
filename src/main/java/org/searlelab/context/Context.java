@@ -6,6 +6,7 @@ import org.searlelab.context.io.ContextFeatureScorer;
 import org.searlelab.context.io.MassListDecoyGenerator;
 import org.searlelab.context.io.TargetedBootstrapperCLI;
 import org.searlelab.context.percolator.ContextPercolatorExecutorCLI;
+import org.searlelab.context.io.ContextFeatureScorerCLI;
 
 public class Context {
 
@@ -20,25 +21,28 @@ public class Context {
 
 		switch (command) {
 
-			case "percolator":
-				ContextPercolatorExecutorCLI.main(remaining);
-				break;
-			case "mprophet":
+		case "percolator":
+			ContextPercolatorExecutorCLI.main(remaining);
+			break;
+		case "mprophet":
 //				ContextMProphetExecutor.main(remaining);
-				break;
-			case "features":
-				ContextFeatureScorer.parseCLIForScoringFeatures(remaining);
-				break;
-			case "bootstrap":
-				TargetedBootstrapperCLI.main(remaining);
-				break;
-			case "decoys":
-				MassListDecoyGenerator.main(remaining);
-				break;
-			default:
-				System.err.println("Unknown command: " + command);
-				printHelp();
-				System.exit(1);
+			break;
+		case "features":
+			ContextFeatureScorer.parseCLIForScoringFeatures(remaining);
+			break;
+		case "features-folder":
+			ContextFeatureScorerCLI.main(remaining);
+			break;
+		case "bootstrap":
+			TargetedBootstrapperCLI.main(remaining);
+			break;
+		case "decoys":
+			MassListDecoyGenerator.main(remaining);
+			break;
+		default:
+			System.err.println("Unknown command: " + command);
+			printHelp();
+			System.exit(1);
 		}
 	}
 
@@ -53,10 +57,14 @@ public class Context {
 		System.out.println("Usage: java -jar context.jar <command> [options]");
 		System.out.println();
 		System.out.println("Commands:");
-		System.out.println("  percolator-context   train a Percolator SVM on the background, apply it to the reference peptides");
-		System.out.println("  percolator   train a Percolator SVM model and apply it to the dataset using cross-validation");
-		System.out.println("  mprophet     train an mProphet LDA on the background, apply it to the reference peptides");
+		System.out.println(
+				"  percolator-context   train a Percolator SVM on the background, apply it to the reference peptides");
+		System.out.println(
+				"  percolator   train a Percolator SVM model and apply it to the dataset using cross-validation");
+		System.out
+				.println("  mprophet     train an mProphet LDA on the background, apply it to the reference peptides");
 		System.out.println("  features     score an acquisition and split features into reference and background");
+		System.out.println("  features-folder  score paired _maskedN DIA and mass-list files in a folder");
 		System.out.println("  bootstrap    build a targeted assay / mass list from a library");
 		System.out.println("  decoys       add entrapment decoys to an assay that only lists targets");
 		System.out.println();
@@ -66,5 +74,6 @@ public class Context {
 		System.out.println();
 		System.out.println("Run a command with -h for its own options, for example:");
 		System.out.println("  java -jar context.jar percolator -h");
+
 	}
 }
