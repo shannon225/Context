@@ -14,7 +14,6 @@ import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.percolator.PercolatorWeights;
 
 public class PercolatorWeightsTest {
 	private static final double EPSILON = 1e-9;

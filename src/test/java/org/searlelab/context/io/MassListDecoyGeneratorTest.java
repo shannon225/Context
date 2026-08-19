@@ -14,8 +14,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.searlelab.context.datastructures.IsolationWindow;
-import org.searlelab.context.io.DirectoryOptions;
-import org.searlelab.context.io.MassListDecoyGenerator;
 
 public class MassListDecoyGeneratorTest {
 

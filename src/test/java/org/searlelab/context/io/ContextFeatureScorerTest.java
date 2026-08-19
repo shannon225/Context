@@ -14,7 +14,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.searlelab.context.datastructures.ScoredFeature;
-import org.searlelab.context.io.ContextFeatureScorer;
 
 public class ContextFeatureScorerTest {
 

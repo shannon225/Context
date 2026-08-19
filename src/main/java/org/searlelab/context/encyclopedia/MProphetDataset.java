@@ -16,8 +16,7 @@ import edu.washington.gs.maccoss.encyclopedia.utils.math.QuickMedian;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.RandomGenerator;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.ScoredObject;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.distributions.Gaussian;
-import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.MProphetData;
-import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.ScoredMProphetData;
+
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TFloatArrayList;
 

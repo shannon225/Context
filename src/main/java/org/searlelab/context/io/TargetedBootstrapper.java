@@ -8,23 +8,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
+
+import org.searlelab.context.datastructures.IsolationWindow;
+import org.searlelab.msrawjava.io.encyclopedia.EncyclopeDIAFile;
+import org.searlelab.msrawjava.model.FragmentScan;
+import org.searlelab.msrawjava.model.PrecursorScan;
+import org.searlelab.msrawjava.model.Range;
+import org.searlelab.msrawjava.model.WindowData;
 
 import edu.washington.gs.maccoss.encyclopedia.datastructures.AminoAcidConstants;
 import edu.washington.gs.maccoss.encyclopedia.datastructures.LibraryEntry;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryFile;
 import edu.washington.gs.maccoss.encyclopedia.utils.math.RandomGenerator;
 //import edu.washington.gs.maccoss.encyclopedia.datastructures.Range;
-
-import org.searlelab.msrawjava.model.FragmentScan;
-import org.searlelab.msrawjava.model.PrecursorScan;
-import org.searlelab.msrawjava.model.WindowData;
-import org.searlelab.msrawjava.model.Range;
-import org.searlelab.context.datastructures.IsolationWindow;
-import org.searlelab.msrawjava.io.encyclopedia.EncyclopeDIAFile;
 
 public class TargetedBootstrapper {
 

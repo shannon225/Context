@@ -23,6 +23,7 @@ public class IsolationWindowReader {
 		try (BufferedReader br = new BufferedReader(new FileReader(massList))) {
 			String delim = getDelimiter(massListFile);
 
+			@SuppressWarnings("unused")
 			String header = br.readLine();
 
 			String line;

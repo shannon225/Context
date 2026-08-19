@@ -13,7 +13,6 @@ import java.util.Random;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.percolator.PyIsoPEPRunner;
 
 public class PyIsoPEPRunnerTest {
 

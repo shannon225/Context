@@ -27,7 +27,6 @@ import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorPe
 import org.searlelab.context.datastructures.IsolationWindow;
 import org.searlelab.context.datastructures.ScoredFeature;
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
-import org.searlelab.context.encyclopedia.SearchToBLIB;
 
 public class ContextFeatureScorer {
 
@@ -108,6 +107,7 @@ public class ContextFeatureScorer {
 	
 	// Changed isFeatureOnMassList to only check for peptide sequence equivalence, not for mass, charge and RT equivalence. I don't think is needed, but keeping for now. 
 
+	@SuppressWarnings("unused")
 	public static ArrayList<ScoredFeature> scoreFeaturesForContext(File library, File rawFile, File fasta, String baseName,
 			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
 
@@ -270,6 +270,7 @@ public class ContextFeatureScorer {
 					int isDecoyIndex = findColumnIndex(headerColumns, "Label");
 					int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
 					int primaryScoreIndex = findColumnIndex(headerColumns, "primary");
+					@SuppressWarnings("unused")
 					int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
 					int sequenceIndex = findColumnIndex(headerColumns, "sequence");
 					int proteinIndex = findColumnIndex(headerColumns, "Proteins");

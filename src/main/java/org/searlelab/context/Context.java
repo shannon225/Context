@@ -5,7 +5,6 @@ import java.util.Arrays;
 import org.searlelab.context.io.ContextFeatureScorer;
 import org.searlelab.context.io.MassListDecoyGenerator;
 import org.searlelab.context.io.TargetedBootstrapperCLI;
-import org.searlelab.context.mprophet.ContextMProphetExecutor;
 import org.searlelab.context.percolator.ContextPercolatorExecutorCLI;
 
 public class Context {

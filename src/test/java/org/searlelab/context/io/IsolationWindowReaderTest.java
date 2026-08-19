@@ -6,10 +6,9 @@ import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Objects;
-import org.checkerframework.common.reflection.qual.GetClass;
+
 import org.junit.Test;
 import org.searlelab.context.datastructures.IsolationWindow;
-import org.searlelab.context.io.IsolationWindowReader;
 
 public class IsolationWindowReaderTest {
 

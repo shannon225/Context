@@ -413,53 +413,53 @@ public class EncyclopediaTwo {
 				// prepare executor for background
 				ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("STRIPE_" + range.getStart() + "to" + range.getStop() + "-%d").setDaemon(true).build();
 				LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>();
-				ExecutorService executor = new ThreadPoolExecutor(cores, cores, Long.MAX_VALUE, TimeUnit.NANOSECONDS, workQueue, threadFactory);
+				try (ExecutorService executor = new ThreadPoolExecutor(cores, cores, Long.MAX_VALUE, TimeUnit.NANOSECONDS, workQueue, threadFactory)) {
+					int count = 0;
 
-				int count = 0;
+					for (LibraryEntry entry : entries) {
+						count++;
+						ArrayList<LibraryEntry> tasks = new ArrayList<LibraryEntry>();
+						tasks.add(entry);
+						tasks.add(entry.getDecoy(parameters));
 
-				for (LibraryEntry entry : entries) {
-					count++;
-					ArrayList<LibraryEntry> tasks = new ArrayList<LibraryEntry>();
-					tasks.add(entry);
-					tasks.add(entry.getDecoy(parameters));
-
-					float extraDecoys = parameters.getNumberOfExtraDecoyLibrariesSearched();
-					while (extraDecoys > 0.0f) {
-						if (extraDecoys < 1.0f) {
-							// check percentage
-							float test = RandomGenerator.random(count);
-							if (test > extraDecoys) {
-								break;
+						float extraDecoys = parameters.getNumberOfExtraDecoyLibrariesSearched();
+						while (extraDecoys > 0.0f) {
+							if (extraDecoys < 1.0f) {
+								// check percentage
+								float test = RandomGenerator.random(count);
+								if (test > extraDecoys) {
+									break;
+								}
 							}
+							extraDecoys = extraDecoys - 1.0f;
+							LibraryEntry shuffle = entry.getShuffle(parameters, Float.hashCode(extraDecoys), false);
+							tasks.add(shuffle);
+							tasks.add(shuffle.getDecoy(parameters));
 						}
-						extraDecoys = extraDecoys - 1.0f;
-						LibraryEntry shuffle = entry.getShuffle(parameters, Float.hashCode(extraDecoys), false);
-						tasks.add(shuffle);
-						tasks.add(shuffle.getDecoy(parameters));
+
+						ArrayList<FragmentScan> localStripes;
+						if (prelimAnalysis.isPresent()) {
+							localStripes = getScanSubsetFromStripes(entry, prelimAnalysis.get().getY(), stripes, rts);
+						} else {
+							localStripes = stripes;
+						}
+						executor.submit(taskFactory.getScoringTask(scorer, tasks, localStripes, range, dutyCycle, precursors, resultsQueue));
 					}
 
-					ArrayList<FragmentScan> localStripes;
-					if (prelimAnalysis.isPresent()) {
-						localStripes = getScanSubsetFromStripes(entry, prelimAnalysis.get().getY(), stripes, rts);
-					} else {
-						localStripes = stripes;
+					if (rangeIndex+1<ranges.size()) {
+						nextEntries=library.getEntries(ranges.get(rangeIndex+1), useSqrt, parameters.getAAConstants());
+						nextStripes=stripefile.getStripes(ranges.get(rangeIndex+1).getMiddle(), -Float.MAX_VALUE, Float.MAX_VALUE, useSqrt);
 					}
-					executor.submit(taskFactory.getScoringTask(scorer, tasks, localStripes, range, dutyCycle, precursors, resultsQueue));
-				}
 
-				if (rangeIndex+1<ranges.size()) {
-					nextEntries=library.getEntries(ranges.get(rangeIndex+1), useSqrt, parameters.getAAConstants());
-					nextStripes=stripefile.getStripes(ranges.get(rangeIndex+1).getMiddle(), -Float.MAX_VALUE, Float.MAX_VALUE, useSqrt);
+					executor.shutdown();
+					while (!executor.isTerminated()) {
+						Logger.logLine(workQueue.size() + " peptides remaining for " + range + "...");
+						float finishedFraction = (count - workQueue.size()) / (float) count;
+						progress.update(baseMessage, baseProgress + baseIncrement * (0.2f + finishedFraction * 0.8f));
+						Thread.sleep(500);
+					}
+					executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 				}
-
-				executor.shutdown();
-				while (!executor.isTerminated()) {
-					Logger.logLine(workQueue.size() + " peptides remaining for " + range + "...");
-					float finishedFraction = (count - workQueue.size()) / (float) count;
-					progress.update(baseMessage, baseProgress + baseIncrement * (0.2f + finishedFraction * 0.8f));
-					Thread.sleep(500);
-				}
-				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
 				rangesFinished++;
 			}

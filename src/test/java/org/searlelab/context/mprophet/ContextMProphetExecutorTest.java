@@ -1,6 +1,7 @@
 package org.searlelab.context.mprophet;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.net.URL;
@@ -11,7 +12,7 @@ import java.util.Objects;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.mprophet.ContextMProphetExecutor;
+
 import com.google.common.io.Files;
 
 public class ContextMProphetExecutorTest {
