@@ -74,7 +74,7 @@ public class ContextPercolator {
 				prunedReferenceTable.getHeader()[EncyclopediaFeatures.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
 
 		File psmOutput = new File(engineDirectory, prefix + ".psm.reference.txt");
-		writeFinalReport(psmTable, prunedReferenceTable, psmOutput);
+		writePyIsoPEPReport(psmTable, prunedReferenceTable, psmOutput);
 
 		File peptideInput = new File(workingDirectory, prefix + ".peptide.rescored.txt");
 		int peptideRows = writeBestPerPeptide(rescoredFeatures, prunedReferenceTable, peptideInput);
@@ -84,16 +84,16 @@ public class ContextPercolator {
 				prunedReferenceTable.getHeader()[EncyclopediaFeatures.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
 
 		File peptideOutput = new File(engineDirectory, prefix + ".peptide.reference.txt");
-		writeFinalReport(peptideTable, prunedReferenceTable, peptideOutput);
+		writePyIsoPEPReport(peptideTable, prunedReferenceTable, peptideOutput);
 
-		int passingPeptides = countPassing(peptideTable, fdr);
+		int passingPeptides = countPeptidesPassingPEPThreshold(peptideTable, fdr);
 
-		Logger.logLine("Wrote " + rescoredFeatures.getName() + " (" + prunedReferenceTable.size()
-				+ " rows including decoys)");
+		Logger.logLine(
+				"Wrote " + rescoredFeatures.getName() + " (" + prunedReferenceTable.size() + " rows including decoys)");
 		Logger.logLine("Wrote " + psmOutput.getName() + " (" + psmTable.size() + " reference target PSMs)");
-		Logger.logLine("Wrote " + peptideOutput.getName() + " (" + peptideTable.size()
-				+ " reference target peptides from " + peptideRows + " deduplicated rows, " + passingPeptides
-				+ " at " + (fdr * 100f) + "% FDR)");
+		Logger.logLine(
+				"Wrote " + peptideOutput.getName() + " (" + peptideTable.size() + " reference target peptides from "
+						+ peptideRows + " deduplicated rows, " + passingPeptides + " at " + (fdr * 100f) + "% FDR)");
 		Logger.logLine("Results are under " + engineDirectory.getAbsolutePath());
 
 		return new ContextPercolatorResult(model, nativeWeights, averagedWeights, rescoredFeatures, psmOutput,
@@ -101,9 +101,9 @@ public class ContextPercolator {
 				fdr);
 	}
 
-	private static PercolatorWeights train(File prunedBackground, File fasta,
-			HashMap<String, String> encyclopediaArgs, File workingDirectory, String prefix, float fdr,
-			File weightsDestination) throws IOException, InterruptedException {
+	private static PercolatorWeights train(File prunedBackground, File fasta, HashMap<String, String> encyclopediaArgs,
+			File workingDirectory, String prefix, float fdr, File weightsDestination)
+			throws IOException, InterruptedException {
 
 		SearchParameters parameters = SearchParameterParser.parseParameters(copyOf(encyclopediaArgs));
 		PercolatorVersion version = parameters.getPercolatorVersionNumber();
@@ -142,8 +142,8 @@ public class ContextPercolator {
 		}
 	}
 
-	private static int[] writeRescoredFeatures(EncyclopediaFeatures table, PercolatorWeights model, File rescoredFeatures)
-			throws IOException {
+	private static int[] writeRescoredFeatures(EncyclopediaFeatures table, PercolatorWeights model,
+			File rescoredFeatures) throws IOException {
 
 		int[] featureIndices = table.getFeatureIndices();
 		int targets = 0;
@@ -171,16 +171,16 @@ public class ContextPercolator {
 		return new int[] { targets, decoys };
 	}
 
-	private static int writeBestPerPeptide(File rescoredFeatures, EncyclopediaFeatures referenceTable, File peptideInput)
-			throws IOException {
+	private static int writeBestPerPeptide(File rescoredFeatures, EncyclopediaFeatures referenceTable,
+			File peptideInput) throws IOException {
 
 		PyIsoPEPRunner.Table rescored = PyIsoPEPRunner.Table.read(rescoredFeatures);
 		String peptideColumn = referenceTable.getHeader()[referenceTable.getPeptideIndex()];
 		int peptideIndex = rescored.indexOf(peptideColumn);
 		int scoreIndex = rescored.indexOf(SCORE_COLUMN);
 		if (peptideIndex < 0 || scoreIndex < 0) {
-			throw new IOException("Rescored features are missing the [" + peptideColumn + "] or [" + SCORE_COLUMN
-					+ "] column.");
+			throw new IOException(
+					"Rescored features are missing the [" + peptideColumn + "] or [" + SCORE_COLUMN + "] column.");
 		}
 
 		ArrayList<String[]> sorted = new ArrayList<>(rescored.getRows());
@@ -189,7 +189,8 @@ public class ContextPercolator {
 		Set<String> seen = new LinkedHashSet<>();
 		ArrayList<String[]> best = new ArrayList<>();
 		for (String[] row : sorted) {
-			if (seen.add(row[peptideIndex])) best.add(row);
+			if (seen.add(row[peptideIndex]))
+				best.add(row);
 		}
 
 		try (BufferedWriter out = new BufferedWriter(new FileWriter(peptideInput))) {
@@ -211,8 +212,8 @@ public class ContextPercolator {
 		}
 	}
 
-	private static void writeFinalReport(PyIsoPEPRunner.Table table, EncyclopediaFeatures referenceTable, File outputFile)
-			throws IOException {
+	private static void writePyIsoPEPReport(PyIsoPEPRunner.Table table, EncyclopediaFeatures referenceTable,
+			File outputFile) throws IOException {
 
 		String[] header = referenceTable.getHeader();
 		String idColumn = header[EncyclopediaFeatures.ID_INDEX];
@@ -227,24 +228,21 @@ public class ContextPercolator {
 			out.write("\n");
 
 			for (String[] row : table.getRows()) {
-				out.write(String.join("\t",
-						table.get(row, idColumn),
-						table.get(row, scanColumn),
-						table.get(row, SCORE_COLUMN),
-						table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN),
-						table.get(row, PyIsoPEPRunner.PEP_COLUMN),
-						table.get(row, peptideColumn),
+				out.write(String.join("\t", table.get(row, idColumn), table.get(row, scanColumn),
+						table.get(row, SCORE_COLUMN), table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN),
+						table.get(row, PyIsoPEPRunner.PEP_COLUMN), table.get(row, peptideColumn),
 						table.get(row, proteinColumn)));
 				out.write("\n");
 			}
 		}
 	}
 
-	private static int countPassing(PyIsoPEPRunner.Table table, float fdr) {
+	private static int countPeptidesPassingPEPThreshold(PyIsoPEPRunner.Table table, float fdr) {
 		int passing = 0;
 		for (String[] row : table.getRows()) {
 			try {
-				if (Double.parseDouble(table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN).trim()) <= fdr) passing++;
+				if (Double.parseDouble(table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN).trim()) <= fdr)
+					passing++;
 			} catch (NumberFormatException nfe) {
 			}
 		}
@@ -263,11 +261,10 @@ public class ContextPercolator {
 		Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING);
 	}
 
-
 	private static void requireReadable(File file, String description) throws IOException {
 		if (file == null || !file.exists() || !file.canRead()) {
-			throw new IOException("Cannot read the " + description + ": "
-					+ (file == null ? "null" : file.getAbsolutePath()));
+			throw new IOException(
+					"Cannot read the " + description + ": " + (file == null ? "null" : file.getAbsolutePath()));
 		}
 	}
 }

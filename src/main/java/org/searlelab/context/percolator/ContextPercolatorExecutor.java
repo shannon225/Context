@@ -41,7 +41,7 @@ public class ContextPercolatorExecutor {
 		String baseName = RawFiles.baseName(dia);
 		String resolvedPrefix = prefix != null ? prefix : new File(baseName).getName();
 
-		File splitOn = MassListDecoyGenerator.resolveForSplit(massList, outputDirectory, resolvedPrefix,
+		File splitOn = MassListDecoyGenerator.resolveDecoysMessage(massList, outputDirectory, resolvedPrefix,
 				generateDecoys);
 
 		Logger.logLine("Scoring " + dia.getName() + " against " + library.getName());

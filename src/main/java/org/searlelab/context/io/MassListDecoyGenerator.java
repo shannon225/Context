@@ -48,10 +48,10 @@ public class MassListDecoyGenerator {
 				: new File(outputValue);
 		if (output.isDirectory()) output = defaultOutput(output, baseName(massList));
 
-		write(addDecoys(massList.getAbsolutePath()), output);
+		writeDecoysToAssay(addDecoysToAssay(massList.getAbsolutePath()), output);
 	}
 
-	public static File ensureDecoys(File massList, File outputDirectory, String prefix) throws IOException {
+	public static File checkIfDecoysArePresent(File massList, File outputDirectory, String prefix) throws IOException {
 		if (hasDecoys(massList.getAbsolutePath())) {
 			Logger.logLine("Mass list " + massList.getName() + " already contains decoys; using it as it is");
 			return massList;
@@ -60,14 +60,14 @@ public class MassListDecoyGenerator {
 		DirectoryOptions.makeDirectory(outputDirectory);
 		File output = new File(outputDirectory, prefix + GENERATED_SUFFIX);
 		Logger.logLine("Mass list " + massList.getName() + " has no decoys; generating entrapment decoys");
-		write(addDecoys(massList.getAbsolutePath()), output);
+		writeDecoysToAssay(addDecoysToAssay(massList.getAbsolutePath()), output);
 		return output;
 	}
 
-	public static File resolveForSplit(File massList, File outputDirectory, String prefix, boolean generateDecoys)
+	public static File resolveDecoysMessage(File massList, File outputDirectory, String prefix, boolean generateDecoys)
 			throws IOException {
 		if (generateDecoys) {
-			return ensureDecoys(massList, outputDirectory, prefix);
+			return checkIfDecoysArePresent(massList, outputDirectory, prefix);
 		}
 		if (!hasDecoys(massList.getAbsolutePath())) {
 			Logger.logLine("Note: " + massList.getName() + " has no decoys. Add -generateDecoys to build them.");
@@ -82,7 +82,7 @@ public class MassListDecoyGenerator {
 		return false;
 	}
 
-	private static void write(ArrayList<IsolationWindow> windows, File output) throws IOException {
+	private static void writeDecoysToAssay(ArrayList<IsolationWindow> windows, File output) throws IOException {
 		Path parent = output.getAbsoluteFile().toPath().getParent();
 		if (parent != null) DirectoryOptions.makeDirectory(parent.toFile());
 
@@ -104,7 +104,7 @@ public class MassListDecoyGenerator {
 		return file.getName().replaceFirst("\\.[^.]+$", "");
 	}
 
-	public static ArrayList<IsolationWindow> addDecoys(String massListPath) {
+	public static ArrayList<IsolationWindow> addDecoysToAssay(String massListPath) {
 		ArrayList<IsolationWindow> input = IsolationWindowReader.parseMassList(massListPath);
 
 		for (IsolationWindow window : input) {
