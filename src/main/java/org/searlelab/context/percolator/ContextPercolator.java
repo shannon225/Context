@@ -20,8 +20,8 @@ import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 
-import org.searlelab.context.datastructures.FeatureTable;
-import org.searlelab.context.datastructures.PreparedFeatures;
+import org.searlelab.context.datastructures.EncyclopediaFeatures;
+import org.searlelab.context.datastructures.ContextFeatures;
 import org.searlelab.context.io.DirectoryOptions;
 
 public class ContextPercolator {
@@ -51,7 +51,7 @@ public class ContextPercolator {
 		File workingDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.WORK_DIRECTORY);
 		File modelDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.MODEL_DIRECTORY);
 
-		PreparedFeatures prepared = PreparedFeatures.prepare(backgroundFeatures, referenceFeatures, workingDirectory,
+		ContextFeatures prepared = ContextFeatures.prepare(backgroundFeatures, referenceFeatures, workingDirectory,
 				prefix);
 
 		File nativeWeights = new File(modelDirectory, prefix + ".weights.txt");
@@ -61,7 +61,7 @@ public class ContextPercolator {
 		File averagedWeights = new File(modelDirectory, prefix + ".weights.averaged.txt");
 		model.writeAveraged(averagedWeights);
 
-		FeatureTable prunedReferenceTable = prepared.getReferenceTable();
+		EncyclopediaFeatures prunedReferenceTable = prepared.getReferenceTable();
 		checkModelMatchesTable(model, prunedReferenceTable);
 
 		File rescoredFeatures = new File(engineDirectory, prefix + ".rescored_features.txt");
@@ -71,7 +71,7 @@ public class ContextPercolator {
 
 		File rawPsmReport = new File(workingDirectory, prefix + ".psm.pyisopep.txt");
 		PyIsoPEPRunner.Table psmTable = pyIsoPEP.runD2PEP(rescoredFeatures, rawPsmReport, SCORE_COLUMN,
-				prunedReferenceTable.getHeader()[FeatureTable.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
+				prunedReferenceTable.getHeader()[EncyclopediaFeatures.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
 
 		File psmOutput = new File(engineDirectory, prefix + ".psm.reference.txt");
 		writeFinalReport(psmTable, prunedReferenceTable, psmOutput);
@@ -81,7 +81,7 @@ public class ContextPercolator {
 
 		File rawPeptideReport = new File(workingDirectory, prefix + ".peptide.pyisopep.txt");
 		PyIsoPEPRunner.Table peptideTable = pyIsoPEP.runD2PEP(peptideInput, rawPeptideReport, SCORE_COLUMN,
-				prunedReferenceTable.getHeader()[FeatureTable.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
+				prunedReferenceTable.getHeader()[EncyclopediaFeatures.LABEL_INDEX], TARGET_LABEL, DECOY_LABEL);
 
 		File peptideOutput = new File(engineDirectory, prefix + ".peptide.reference.txt");
 		writeFinalReport(peptideTable, prunedReferenceTable, peptideOutput);
@@ -133,7 +133,7 @@ public class ContextPercolator {
 		return model;
 	}
 
-	private static void checkModelMatchesTable(PercolatorWeights model, FeatureTable table) throws IOException {
+	private static void checkModelMatchesTable(PercolatorWeights model, EncyclopediaFeatures table) throws IOException {
 		List<String> modelFeatures = model.getFeatureNames();
 		List<String> tableFeatures = table.getFeatureNames();
 		if (!modelFeatures.equals(tableFeatures)) {
@@ -142,7 +142,7 @@ public class ContextPercolator {
 		}
 	}
 
-	private static int[] writeRescoredFeatures(FeatureTable table, PercolatorWeights model, File rescoredFeatures)
+	private static int[] writeRescoredFeatures(EncyclopediaFeatures table, PercolatorWeights model, File rescoredFeatures)
 			throws IOException {
 
 		int[] featureIndices = table.getFeatureIndices();
@@ -162,7 +162,7 @@ public class ContextPercolator {
 				}
 
 				String[] normalised = row.clone();
-				normalised[FeatureTable.LABEL_INDEX] = isDecoy ? DECOY_LABEL : TARGET_LABEL;
+				normalised[EncyclopediaFeatures.LABEL_INDEX] = isDecoy ? DECOY_LABEL : TARGET_LABEL;
 
 				out.write(String.join("\t", normalised));
 				out.write("\t" + model.score(table.getFeatureValues(row, featureIndices)) + "\n");
@@ -171,7 +171,7 @@ public class ContextPercolator {
 		return new int[] { targets, decoys };
 	}
 
-	private static int writeBestPerPeptide(File rescoredFeatures, FeatureTable referenceTable, File peptideInput)
+	private static int writeBestPerPeptide(File rescoredFeatures, EncyclopediaFeatures referenceTable, File peptideInput)
 			throws IOException {
 
 		PyIsoPEPRunner.Table rescored = PyIsoPEPRunner.Table.read(rescoredFeatures);
@@ -211,11 +211,11 @@ public class ContextPercolator {
 		}
 	}
 
-	private static void writeFinalReport(PyIsoPEPRunner.Table table, FeatureTable referenceTable, File outputFile)
+	private static void writeFinalReport(PyIsoPEPRunner.Table table, EncyclopediaFeatures referenceTable, File outputFile)
 			throws IOException {
 
 		String[] header = referenceTable.getHeader();
-		String idColumn = header[FeatureTable.ID_INDEX];
+		String idColumn = header[EncyclopediaFeatures.ID_INDEX];
 		int scanIndex = referenceTable.getScanIndex();
 		String scanColumn = scanIndex < 0 ? "ScanNr" : header[scanIndex];
 		String peptideColumn = header[referenceTable.getPeptideIndex()];

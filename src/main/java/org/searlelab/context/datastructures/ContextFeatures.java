@@ -9,18 +9,18 @@ import java.util.Set;
 
 import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 
-public class PreparedFeatures {
+public class ContextFeatures {
 
 	private final File background;
 	private final File reference;
-	private final FeatureTable referenceTable;
+	private final EncyclopediaFeatures referenceTable;
 	private final List<String> droppedFeatures;
 	private final int backgroundTargets;
 	private final int backgroundDecoys;
 	private final int referenceTargets;
 	private final int referenceDecoys;
 
-	private PreparedFeatures(File background, File reference, FeatureTable referenceTable,
+	private ContextFeatures(File background, File reference, EncyclopediaFeatures referenceTable,
 			List<String> droppedFeatures, int backgroundTargets, int backgroundDecoys, int referenceTargets,
 			int referenceDecoys) {
 		this.background = background;
@@ -33,19 +33,19 @@ public class PreparedFeatures {
 		this.referenceDecoys = referenceDecoys;
 	}
 
-	public static PreparedFeatures prepare(File backgroundFeatures, File referenceFeatures, File workingDirectory,
+	public static ContextFeatures prepare(File backgroundFeatures, File referenceFeatures, File workingDirectory,
 			String prefix) throws IOException {
 
 		requireReadable(backgroundFeatures, "background feature file");
 		requireReadable(referenceFeatures, "reference feature file");
 		makeDirectory(workingDirectory);
 
-		FeatureTable.requireMatchingHeaders(backgroundFeatures, referenceFeatures);
+		EncyclopediaFeatures.requireMatchingHeaders(backgroundFeatures, referenceFeatures);
 
 		Logger.logLine("Reading background features: " + backgroundFeatures.getName());
-		FeatureTable background = FeatureTable.read(backgroundFeatures);
+		EncyclopediaFeatures background = EncyclopediaFeatures.read(backgroundFeatures);
 		Logger.logLine("Reading reference features: " + referenceFeatures.getName());
-		FeatureTable reference = FeatureTable.read(referenceFeatures);
+		EncyclopediaFeatures reference = EncyclopediaFeatures.read(referenceFeatures);
 
 		int[] backgroundCounts = countLabels(background);
 		int[] referenceCounts = countLabels(reference);
@@ -68,12 +68,12 @@ public class PreparedFeatures {
 		background.writeWithout(prunedBackground, toDrop);
 		reference.writeWithout(prunedReference, toDrop);
 
-		return new PreparedFeatures(prunedBackground, prunedReference, FeatureTable.read(prunedReference),
+		return new ContextFeatures(prunedBackground, prunedReference, EncyclopediaFeatures.read(prunedReference),
 				Collections.unmodifiableList(dropped), backgroundCounts[0], backgroundCounts[1], referenceCounts[0],
 				referenceCounts[1]);
 	}
 
-	private static int[] countLabels(FeatureTable table) {
+	private static int[] countLabels(EncyclopediaFeatures table) {
 		int targets = 0;
 		int decoys = 0;
 		for (String[] row : table.getRows()) {
@@ -108,7 +108,7 @@ public class PreparedFeatures {
 		return reference;
 	}
 
-	public FeatureTable getReferenceTable() {
+	public EncyclopediaFeatures getReferenceTable() {
 		return referenceTable;
 	}
 

@@ -30,7 +30,7 @@ import org.searlelab.context.encyclopedia.EncyclopediaTwo;
 
 public class ContextFeatureScorer {
 
-	public static void parseCLIForScoringFeatures(String[] args) throws IOException, SQLException, InterruptedException, DataFormatException {
+	public static void main(String[] args) throws IOException, SQLException, InterruptedException, DataFormatException {
 
 		if (args.length != 4) {
 			System.err.println("Usage: ");

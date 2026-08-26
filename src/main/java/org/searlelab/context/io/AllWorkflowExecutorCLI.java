@@ -101,7 +101,7 @@ public final class AllWorkflowExecutorCLI {
 
 		HashMap<String, String> parameters = encyclopediaArguments == null
 				? SearchParameterParser.getDefaultParameters()
-				: new HashMap<>(encyclopediaArguments);
+						: new HashMap<>(encyclopediaArguments);
 
 		Logger.logLine("[1/4] Running Context Percolator");
 		ContextPercolatorResult contextPercolator = ContextPercolator.trainAndApply(
@@ -172,7 +172,7 @@ public final class AllWorkflowExecutorCLI {
 
 	private static MProphetResult runStandardMProphet(File allFeatures, File fasta,
 			SearchParameters parameters, float fdr, File outputDirectory, String prefix)
-			throws Exception {
+					throws Exception {
 
 		File engineDirectory = DirectoryOptions.engineDirectory(
 				outputDirectory, STANDARD_MPROPHET_ENGINE_NAME);

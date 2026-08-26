@@ -13,8 +13,8 @@ import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.searlelab.context.datastructures.FeatureTable;
-import org.searlelab.context.datastructures.PreparedFeatures;
+import org.searlelab.context.datastructures.EncyclopediaFeatures;
+import org.searlelab.context.datastructures.ContextFeatures;
 
 public class PreparedFeaturesTest {
 
@@ -39,11 +39,11 @@ public class PreparedFeaturesTest {
 
 	@Test
 	public void prunesTheSameColumnsFromBothHalves() throws IOException {
-		PreparedFeatures prepared = PreparedFeatures.prepare(background(), reference(), folder.getRoot(), "run");
+		ContextFeatures prepared = ContextFeatures.prepare(background(), reference(), folder.getRoot(), "run");
 
 		assertEquals(Collections.singletonList("constFeat"), prepared.getDroppedFeatures());
 
-		assertEquals(Arrays.asList("featA"), FeatureTable.read(prepared.getBackground()).getFeatureNames());
+		assertEquals(Arrays.asList("featA"), EncyclopediaFeatures.read(prepared.getBackground()).getFeatureNames());
 		assertEquals(Arrays.asList("featA"), prepared.getReferenceTable().getFeatureNames());
 	}
 
@@ -53,14 +53,14 @@ public class PreparedFeaturesTest {
 				"ref1\t1\t20\t9.9\t7\tTARGETK\tsp|P3|C",
 				"ref2\t-1\t21\t9.9\t7\tKTEGRAT\tDECOY_sp|P3|C");
 
-		PreparedFeatures prepared = PreparedFeatures.prepare(background(), reference, folder.getRoot(), "run");
+		ContextFeatures prepared = ContextFeatures.prepare(background(), reference, folder.getRoot(), "run");
 
 		assertEquals(Arrays.asList("featA"), prepared.getReferenceTable().getFeatureNames());
 	}
 
 	@Test
 	public void countsBothHalves() throws IOException {
-		PreparedFeatures prepared = PreparedFeatures.prepare(background(), reference(), folder.getRoot(), "run");
+		ContextFeatures prepared = ContextFeatures.prepare(background(), reference(), folder.getRoot(), "run");
 
 		assertEquals(2, prepared.getBackgroundTargets());
 		assertEquals(2, prepared.getBackgroundDecoys());
@@ -70,7 +70,7 @@ public class PreparedFeaturesTest {
 
 	@Test
 	public void writesThePrunedTablesWhereItSaysItDoes() throws IOException {
-		PreparedFeatures prepared = PreparedFeatures.prepare(background(), reference(), folder.getRoot(), "run");
+		ContextFeatures prepared = ContextFeatures.prepare(background(), reference(), folder.getRoot(), "run");
 
 		assertEquals(new File(folder.getRoot(), "run.background.pin"), prepared.getBackground());
 		assertEquals(new File(folder.getRoot(), "run.reference.pin"), prepared.getReference());
@@ -84,7 +84,7 @@ public class PreparedFeaturesTest {
 				"ref1\t1\t20\t3.5\t7\tTARGETK\tsp|P3|C");
 
 		try {
-			PreparedFeatures.prepare(background(), reference, folder.getRoot(), "run");
+			ContextFeatures.prepare(background(), reference, folder.getRoot(), "run");
 			fail("expected a targets-only reference panel to be rejected");
 		} catch (IOException expected) {
 			assertTrue(expected.getMessage().contains("no decoys"));
@@ -98,7 +98,7 @@ public class PreparedFeaturesTest {
 				"bg3\t1\t12\t2.5\t7\tOTHERK\tsp|P2|B");
 
 		try {
-			PreparedFeatures.prepare(background, reference(), folder.getRoot(), "run");
+			ContextFeatures.prepare(background, reference(), folder.getRoot(), "run");
 			fail("expected a background without decoys to be rejected");
 		} catch (IOException expected) {
 			assertTrue(expected.getMessage().contains("training needs both"));
@@ -113,7 +113,7 @@ public class PreparedFeaturesTest {
 				"ref2\t-1\t21\t0.1\tKTEGRAT\tDECOY_sp|P3|C");
 
 		try {
-			PreparedFeatures.prepare(background(), reference, folder.getRoot(), "run");
+			ContextFeatures.prepare(background(), reference, folder.getRoot(), "run");
 			fail("expected mismatched headers to be rejected");
 		} catch (IOException expected) {
 			assertTrue(expected.getMessage().contains("same columns"));

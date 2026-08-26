@@ -12,7 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public class FeatureTable {
+public class EncyclopediaFeatures {
 	private static final String DELIM = "\t";
 
 	public static final double NEAR_CONSTANT_SIGMA = 1e-6;
@@ -23,12 +23,12 @@ public class FeatureTable {
 	private final String[] header;
 	private final ArrayList<String[]> rows;
 
-	private FeatureTable(String[] header, ArrayList<String[]> rows) {
+	private EncyclopediaFeatures(String[] header, ArrayList<String[]> rows) {
 		this.header = header;
 		this.rows = rows;
 	}
 
-	public static FeatureTable read(File file) throws IOException {
+	public static EncyclopediaFeatures read(File file) throws IOException {
 		ArrayList<String[]> rows = new ArrayList<>();
 		String[] header;
 
@@ -61,7 +61,7 @@ public class FeatureTable {
 			}
 		}
 
-		return new FeatureTable(header, rows);
+		return new EncyclopediaFeatures(header, rows);
 	}
 
 	private static String[] mergeTrailingColumns(String[] columns, int width) {
