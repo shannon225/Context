@@ -2,9 +2,8 @@ package org.searlelab.context.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -81,20 +80,34 @@ public final class AllWorkflowExecutorCLI {
 		}
 
 		try {
-			File allFeatures = requiredReadableFile(arguments, "--features");
-			File backgroundFeatures = requiredReadableFile(arguments, "--background");
-			File referenceFeatures = requiredReadableFile(arguments, "--reference");
+			
+			boolean folderMode = arguments.containsKey("--features-folder");
+			boolean singleFileMode = arguments.containsKey("--features") || arguments.containsKey("--background") || arguments.containsKey("--reference");
+			
+			
+			if (folderMode && singleFileMode) {
+				throw new IllegalArgumentException("Use either --features-folder or the single-file options, not both.");
+			}
+			
 			File fasta = requiredReadableFile(arguments, "-f");
-
 			float fdr = Float.parseFloat(arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
-			File outputDirectory = DirectoryOptions.outputDirectory(arguments,
-					allFeatures.getAbsoluteFile().getParentFile());
-			String prefix = arguments.getOrDefault("--prefix", stripFeatureSuffix(allFeatures));
 			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("--pyisopep"));
 			HashMap<String, String> encyclopediaArguments = encyclopediaArguments(arguments);
 
-			runAll(allFeatures, backgroundFeatures, referenceFeatures, fasta, pyIsoPEP, fdr, outputDirectory, prefix,
-					encyclopediaArguments);
+			if (folderMode) {
+				File featuresFolder = requiredReadableDirectory(arguments, "--features-folder");
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments, featuresFolder.getAbsoluteFile().getParentFile());			
+				runAllOnFolder(featuresFolder, fasta, pyIsoPEP, fdr, outputDirectory, encyclopediaArguments);
+			} else {
+				File allFeatures = requiredReadableFile(arguments, "--features" );
+				File backgroundFeatures = requiredReadableFile(arguments, "--background");
+				File referenceFeatures = requiredReadableFile(arguments, "--reference");
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments,
+						allFeatures.getAbsoluteFile().getParentFile());
+				String prefix = arguments.getOrDefault("--prefix", stripFeatureSuffix(allFeatures));
+				runAll(allFeatures, backgroundFeatures, referenceFeatures, fasta, pyIsoPEP, fdr, outputDirectory, prefix,
+						encyclopediaArguments);
+			}
 		} catch (Exception e) {
 			Logger.errorLine("Workflow execution failed: " + e.getMessage());
 			e.printStackTrace();
@@ -133,10 +146,12 @@ public final class AllWorkflowExecutorCLI {
 				referenceFeatures, fasta, parameters, pyIsoPEP, fdr, outputDirectory, prefix);
 
 		Logger.logLine("[2/4] Running standard Percolator");
+		
+		SearchParameters searchParameters = parseSearchParameters(parameters, fdr);
+		
 		PercolatorExecutionData standardPercolator = ContextPercolatorExecutor.runStandardPercolator(allFeatures, fasta,
 				pyIsoPEP, fdr, outputDirectory, prefix, new HashMap<>(parameters));
 
-		SearchParameters searchParameters = parseSearchParameters(parameters, fdr);
 
 		Logger.logLine("[3/4] Running Context mProphet");
 		MProphetResult contextMProphet = runContextMProphet(backgroundFeatures, referenceFeatures, fasta,
@@ -162,12 +177,12 @@ public final class AllWorkflowExecutorCLI {
 		}
 		
 		if (outputDirectory == null) {
-			throw new IllegalArgumentException("Output directory must not be null."); // Change this to make the output directory if its not made already
+			throw new IllegalArgumentException("Output directory must not be null.");
 		}
 
 		ArrayList<FeatureFileSet> featureSets = findFeatureFileSets(featureFolder);
 		
-		Logger.logLine("Found" + featureSets.size() + " matched feature-file sets.");
+		Logger.logLine("Found " + featureSets.size() + " matched feature-file sets.");
 		Map<String, AllWorkflowResult> results = new HashMap<>();
 		
 		int index = 0;
@@ -182,12 +197,12 @@ public final class AllWorkflowExecutorCLI {
 			
 			Logger.logLine("Finished " + results.size() + " matched feature-file sets. Results are under " + outputDirectory.getAbsolutePath());
 			
-			return results;
 		}
-		return null;
+		return results;
 
 	}
 
+	
 	private static MProphetResult runContextMProphet(File backgroundFeatures, File referenceFeatures, File fasta,
 			SearchParameters parameters, float fdr, File outputDirectory, String prefix) throws Exception {
 
@@ -232,7 +247,7 @@ public final class AllWorkflowExecutorCLI {
 				+ (fdr * 100.0f) + "% FDR");
 		return result;
 	}
-
+	
 	private static SearchParameters parseSearchParameters(HashMap<String, String> encyclopediaArguments, float fdr) {
 		HashMap<String, String> parameterMap = SearchParameterParser.getDefaultParametersObject().toParameterMap();
 		parameterMap.putAll(encyclopediaArguments);
@@ -272,6 +287,21 @@ public final class AllWorkflowExecutorCLI {
 	    return directory;
 	}
 	
+	private static File requiredReadableDirectory(
+			HashMap<String, String> arguments,
+			String flag) throws IOException {
+
+		String value = arguments.get(flag);
+
+		if (value == null || value.trim().isEmpty()) {
+			throw new IllegalArgumentException(
+					"Missing required argument: " + flag);
+		}
+
+		File directory = new File(value);
+
+		return requireReadableDirectory(directory, flag);
+	}
 
 	private static boolean containsHelpFlag(HashMap<String, String> arguments) {
 		return arguments.containsKey("-h") || arguments.containsKey("-help") || arguments.containsKey("--help");
@@ -330,7 +360,7 @@ public final class AllWorkflowExecutorCLI {
 	}
 		
 		if (!missingFiles.isEmpty()) {
-			throw new IOException("The following reqiured feature files are missing or unreadable: " + String.join(","  , missingFiles));
+			throw new IOException("The following required feature files are missing or unreadable: " + String.join(", "  , missingFiles));
 		}
 
 
@@ -376,36 +406,8 @@ private static HashMap<String, String> encyclopediaArguments(HashMap<String, Str
 		Logger.timelessLogLine("  <o>/" + STANDARD_PERCOLATOR_ENGINE_NAME);
 		Logger.timelessLogLine("  <o>/" + CONTEXT_MPROPHET_ENGINE_NAME);
 		Logger.timelessLogLine("  <o>/" + STANDARD_MPROPHET_ENGINE_NAME);
-	}
-
-	public static final class AllWorkflowResult {
-		private final ContextPercolatorResult contextPercolator;
-		private final PercolatorExecutionData standardPercolator;
-		private final MProphetResult contextMProphet;
-		private final MProphetResult standardMProphet;
-
-		private AllWorkflowResult(ContextPercolatorResult contextPercolator, PercolatorExecutionData standardPercolator,
-				MProphetResult contextMProphet, MProphetResult standardMProphet) {
-			this.contextPercolator = contextPercolator;
-			this.standardPercolator = standardPercolator;
-			this.contextMProphet = contextMProphet;
-			this.standardMProphet = standardMProphet;
-		}
-
-		public ContextPercolatorResult getContextPercolator() {
-			return contextPercolator;
-		}
-
-		public PercolatorExecutionData getStandardPercolator() {
-			return standardPercolator;
-		}
-
-		public MProphetResult getContextMProphet() {
-			return contextMProphet;
-		}
-
-		public MProphetResult getStandardMProphet() {
-			return standardMProphet;
-		}
+	
 	}
 }
+
+	

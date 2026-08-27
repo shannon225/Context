@@ -85,36 +85,47 @@ public class ContextPercolatorExecutor {
 
 		PercolatorExecutionData run = new PercolatorExecutionData(allFeatures, fasta, peptideTargets, peptideDecoys, proteinTargets, proteinDecoys, parameters);
 
-		Files.deleteIfExists(run.getModelFile().toPath());
-		Files.deleteIfExists(run.getWeightsFile(FINAL_ROUND).toPath());
+		deletePercolatorOutputs(run, peptideTargets, peptideDecoys, proteinTargets, proteinDecoys);
 
 		Logger.logLine("Running standard Percolator cross-validation on " + allFeatures.getName());
 
 		Pair<ArrayList<PercolatorPeptide>, Float> result = PercolatorExecutor.executePercolatorTSV(parameters.getPercolatorVersionNumber(), run, fdr, parameters.getAAConstants(), FINAL_ROUND);
 
 		File workingDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.WORK_DIRECTORY);
-		File pyIsoTargetInput = new File(workingDirectory, prefix + ".peptide.target.pyisopep.input.txt");
-		File pyIsoDecoyInput = new File(workingDirectory, prefix + ".peptide.decoy.pyisopep.input.txt");
+//		File pyIsoTargetInput = new File(workingDirectory, prefix + ".peptide.target.pyisopep.input.txt");
+//		File pyIsoDecoyInput = new File(workingDirectory, prefix + ".peptide.decoy.pyisopep.input.txt");
 
-		preparePercolatorOutputForPyIsoPEP(peptideTargets, pyIsoTargetInput);
-		preparePercolatorOutputForPyIsoPEP(peptideDecoys,pyIsoDecoyInput);
+//		preparePercolatorOutputForPyIsoPEP(peptideTargets, pyIsoTargetInput);
+//		preparePercolatorOutputForPyIsoPEP(peptideDecoys,pyIsoDecoyInput);
 
-		File pyIsoOutput = new File(engineDirectory,prefix + ".peptide.pyisopep.txt");
-		Files.deleteIfExists(pyIsoOutput.toPath());
+//		File pyIsoOutput = new File(engineDirectory,prefix + ".peptide.pyisopep.txt");
+//		Files.deleteIfExists(pyIsoOutput.toPath());
 		
-		PyIsoPEPRunner.Table pyIsoTable = pyIsoPEP.runD2PEP(pyIsoTargetInput, pyIsoDecoyInput, pyIsoOutput,"score");
+//		PyIsoPEPRunner.Table pyIsoTable = pyIsoPEP.runD2PEP(pyIsoTargetInput, pyIsoDecoyInput, pyIsoOutput,"score");
 
-		int passingPyIsoPEPPeptides = countPassingPyIsoPEPPeptides(pyIsoTable, fdr); 
-		Logger.logLine("Percolator and PyIsoPEP have run and resulted in " + passingPyIsoPEPPeptides + " target peptides below " + (fdr*100f) + "% FDR");
-		Logger.logLine("Native Percolator resulted in "+ result.x.size()+ " target peptides below "+ (fdr * 100f) + "% FDR");
-		Logger.logLine("pyIsoPEP results are written to " + pyIsoOutput.getAbsolutePath());
-		Logger.logLine("Results for running Standard Percolator are under " + pyIsoOutput.getAbsolutePath());
-
+//		int passingPyIsoPEPPeptides = countPassingPyIsoPEPPeptides(pyIsoTable, fdr); 
+//		Logger.logLine("Percolator and PyIsoPEP have run and resulted in " + passingPyIsoPEPPeptides + " target peptides below " + (fdr*100f) + "% FDR");
+///		Logger.logLine("Native Percolator resulted in "+ result.x.size()+ " target peptides below "+ (fdr * 100f) + "% FDR");
+//		Logger.logLine("pyIsoPEP results are written to " + pyIsoOutput.getAbsolutePath());
+//		Logger.logLine("Results for running Standard Percolator are under " + pyIsoOutput.getAbsolutePath());
+		
+		Logger.logLine("Standard Percolator found " + result.x.size() + " peptides at " + (fdr * 100.0f)
+				+ "% FDR (pi0 = " + result.y + ")");
+		Logger.logLine("Standard Percolator results are under " + engineDirectory.getAbsolutePath());
 
 		return run;
 
 	}
 
+	private static void deletePercolatorOutputs(PercolatorExecutionData commandData, File peptideTargets, File peptideDecoys, File proteinTargets, File proteinDecoys) throws IOException {
+		Files.deleteIfExists(peptideTargets.toPath());
+		Files.deleteIfExists(peptideDecoys.toPath());
+		Files.deleteIfExists(proteinTargets.toPath());
+		Files.deleteIfExists(proteinDecoys.toPath());
+		Files.deleteIfExists(commandData.getModelFile().toPath());
+		Files.deleteIfExists(commandData.getWeightsFile(FINAL_ROUND).toPath());
+	}
+	
 	private static void preparePercolatorOutputForPyIsoPEP(File source, File destination) throws IOException {
 
 		try (BufferedReader reader = new BufferedReader(new FileReader(source));
