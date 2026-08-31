@@ -37,7 +37,7 @@ public class ContextPercolatorExecutorCLI {
 				String prefix = arguments.getOrDefault("-prefix", stripFeatureSuffix(features));
 				
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
-				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs);
+				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs, prefix, "standard");
 				return;
 			}
 			
