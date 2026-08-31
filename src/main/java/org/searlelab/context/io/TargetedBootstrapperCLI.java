@@ -8,10 +8,10 @@ public class TargetedBootstrapperCLI {
 
 	public static void main(String[] args) throws Throwable {
 
-		if (args.length < 2 || args.length > 6) {
+		if (args.length < 2 || args.length > 7) {
 			System.err.println("Usage: " + "TargetedBootstrapperCLI "
 					+ "<library file location> <.dia file location> "
-					+ "\n[seed] [numberOfpeptides] [halfWindowWidthRT] [halfWindowWidthMz]");
+					+ "\n[int seed] [int numberOfpeptides] [float halfWindowWidthRT] [int halfWindowWidthMz] [boolean useTraps]");
 			System.exit(1);
 		}
 
@@ -23,6 +23,7 @@ public class TargetedBootstrapperCLI {
 		int numberOfPeptides = DEFAULT_NUMBER_OF_PEPTIDES; // number of Peptides per assay
 		float halfWindowWidthRT = DEFAULT_WINDOW_WIDTH_RT;
 		double halfWindowWidthMz = DEFAULT_HALF_WINDOW_WIDTH_MZ;
+		boolean useTraps = false; // Default if there isn't a flag for using traps
 
 		// Parameters as input
 		if (args.length >= 3) {
@@ -42,12 +43,13 @@ public class TargetedBootstrapperCLI {
 		}
 		
 		if (args.length >= 7) {
-			System.out.println("There are too many arguments, retry with a max of 7 arguments.");
+			useTraps = Boolean.parseBoolean(args[6]);
 		}
+	
 
 		TargetedBootstrapper bootstrapper = new TargetedBootstrapper();
 		bootstrapper.execute(libraryPath, rawFilePath, seed, numberOfPeptides, halfWindowWidthRT,
-				halfWindowWidthMz);
+				halfWindowWidthMz, useTraps);
 
 	}
 

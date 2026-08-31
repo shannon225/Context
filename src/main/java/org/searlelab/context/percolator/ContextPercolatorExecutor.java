@@ -1,10 +1,6 @@
 package org.searlelab.context.percolator;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +22,7 @@ import edu.washington.gs.maccoss.encyclopedia.utils.Pair;
 
 public class ContextPercolatorExecutor {
 	private static final String STANDARD_ENGINE_NAME = "standard-percolator";
+	private static final String TARGET_ENGINE_NAME = "target-percolator";
 	private static final int FINAL_ROUND = 2;
 
 	public static ContextPercolatorResult runContextPercolator(File library, File fasta, File dia, File massList,
@@ -54,10 +51,15 @@ public class ContextPercolatorExecutor {
 				pyIsoPEP, fdr, outputDirectory, resolvedPrefix);
 	}
 
-	public static PercolatorExecutionData runStandardPercolator(File allFeatures, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs) throws IOException, InterruptedException {
+	
+	public static PercolatorExecutionData runStandardPercolator(File features, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs, String engineName, String workflowName) throws IOException, InterruptedException {
+		return runPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs, STANDARD_ENGINE_NAME, "standard");
+	}
+	
+	public static PercolatorExecutionData runPercolator(File features, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs, String engineName, String workflowName) throws IOException, InterruptedException {
 
-		if (!allFeatures.exists() || !allFeatures.canRead()) {
-			throw new IOException("Feature file not found or is unreadable: " + allFeatures.getAbsolutePath());
+		if (!features.exists() || !features.canRead()) {
+			throw new IOException("Feature file not found or is unreadable: " + features.getAbsolutePath());
 		}
 
 		if (!fasta.exists() || !fasta.canRead()) {
@@ -77,44 +79,32 @@ public class ContextPercolatorExecutor {
 		parameterMap.put("-percolatorThreshold",  Float.toString(fdr));
 		SearchParameters parameters = SearchParameterParser.parseParameters(parameterMap);
 
-		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, STANDARD_ENGINE_NAME);
+		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, engineName);
 		File peptideTargets = new File(engineDirectory, prefix + ".peptide.target.txt");
 		File peptideDecoys = new File(engineDirectory, prefix + ".peptide.decoy.txt");
 		File proteinTargets = new File(engineDirectory, prefix + ".protein.target.txt");
 		File proteinDecoys = new File(engineDirectory, prefix + ".protein.decoy.txt");
 
-		PercolatorExecutionData run = new PercolatorExecutionData(allFeatures, fasta, peptideTargets, peptideDecoys, proteinTargets, proteinDecoys, parameters);
+		PercolatorExecutionData run = new PercolatorExecutionData(features, fasta, peptideTargets, peptideDecoys, proteinTargets, proteinDecoys, parameters);
 
 		deletePercolatorOutputs(run, peptideTargets, peptideDecoys, proteinTargets, proteinDecoys);
 
-		Logger.logLine("Running standard Percolator cross-validation on " + allFeatures.getName());
+		Logger.logLine("Running " + workflowName + " standard Percolator cross-validation on " + features.getName());
 
 		Pair<ArrayList<PercolatorPeptide>, Float> result = PercolatorExecutor.executePercolatorTSV(parameters.getPercolatorVersionNumber(), run, fdr, parameters.getAAConstants(), FINAL_ROUND);
 
-		File workingDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.WORK_DIRECTORY);
-//		File pyIsoTargetInput = new File(workingDirectory, prefix + ".peptide.target.pyisopep.input.txt");
-//		File pyIsoDecoyInput = new File(workingDirectory, prefix + ".peptide.decoy.pyisopep.input.txt");
-
-//		preparePercolatorOutputForPyIsoPEP(peptideTargets, pyIsoTargetInput);
-//		preparePercolatorOutputForPyIsoPEP(peptideDecoys,pyIsoDecoyInput);
-
-//		File pyIsoOutput = new File(engineDirectory,prefix + ".peptide.pyisopep.txt");
-//		Files.deleteIfExists(pyIsoOutput.toPath());
-		
-//		PyIsoPEPRunner.Table pyIsoTable = pyIsoPEP.runD2PEP(pyIsoTargetInput, pyIsoDecoyInput, pyIsoOutput,"score");
-
-//		int passingPyIsoPEPPeptides = countPassingPyIsoPEPPeptides(pyIsoTable, fdr); 
-//		Logger.logLine("Percolator and PyIsoPEP have run and resulted in " + passingPyIsoPEPPeptides + " target peptides below " + (fdr*100f) + "% FDR");
-///		Logger.logLine("Native Percolator resulted in "+ result.x.size()+ " target peptides below "+ (fdr * 100f) + "% FDR");
-//		Logger.logLine("pyIsoPEP results are written to " + pyIsoOutput.getAbsolutePath());
-//		Logger.logLine("Results for running Standard Percolator are under " + pyIsoOutput.getAbsolutePath());
-		
+		File workingDirectory = DirectoryOptions.subdirectory(engineDirectory, DirectoryOptions.WORK_DIRECTORY);	
 		Logger.logLine("Standard Percolator found " + result.x.size() + " peptides at " + (fdr * 100.0f)
 				+ "% FDR (pi0 = " + result.y + ")");
 		Logger.logLine("Standard Percolator results are under " + engineDirectory.getAbsolutePath());
 
 		return run;
 
+	}
+	
+	public static PercolatorExecutionData runTargetPercolator(File features, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, 
+			File outputDirectory, String prefix, HashMap<String, String> encyclopediaArgs, String engineName, String workflowName) throws IOException, InterruptedException {
+		return runPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs, TARGET_ENGINE_NAME, "targeted");
 	}
 
 	private static void deletePercolatorOutputs(PercolatorExecutionData commandData, File peptideTargets, File peptideDecoys, File proteinTargets, File proteinDecoys) throws IOException {
@@ -126,51 +116,4 @@ public class ContextPercolatorExecutor {
 		Files.deleteIfExists(commandData.getWeightsFile(FINAL_ROUND).toPath());
 	}
 	
-	private static void preparePercolatorOutputForPyIsoPEP(File source, File destination) throws IOException {
-
-		try (BufferedReader reader = new BufferedReader(new FileReader(source));
-				BufferedWriter writer = new BufferedWriter(new FileWriter(destination))) {
-			String line;
-
-			while ((line = reader.readLine()) != null) {
-				if (line.startsWith(PercolatorExecutor.PI_0_TAG)) {
-					continue;
-				}
-
-				if (line.trim().isEmpty()) {
-					continue;
-				}
-
-				writer.write(line);
-				writer.newLine();
-			}
-		}
-	}
-
-	private static int countPassingPyIsoPEPPeptides(PyIsoPEPRunner.Table table,float fdr) throws IOException {
-
-		if (table.indexOf(PyIsoPEPRunner.Q_VALUE_COLUMN) < 0) {
-			throw new IOException("pyIsoPEP output is missing the q-value column: "+ PyIsoPEPRunner.Q_VALUE_COLUMN);
-		}
-
-		int passing = 0;
-
-		for (String[] row : table.getRows()) {
-			String value = table.get(row, PyIsoPEPRunner.Q_VALUE_COLUMN);
-
-			try {
-				if (Double.parseDouble(value.trim()) <= fdr) {
-					passing++;
-				}
-
-			} catch (NumberFormatException e) {
-				throw new IOException(
-						"Could not parse pyIsoPEP q-value: " + value,
-						e
-						);
-			}
-		}
-
-		return passing;
-	}
 }
