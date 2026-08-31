@@ -25,7 +25,7 @@ public class ContextMProphetExecutor {
 
 		// Score features in the .dia file against the library, split the results
 		try {
-			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath, 0); // run this if the feature file hasn't been processed yet
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 			File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
@@ -90,7 +90,7 @@ public class ContextMProphetExecutor {
 						
 					}
 
-					ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+					ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath, 0); // run this if the feature file hasn't been processed yet
 					String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 					File backgroundFeatureFile = new File(featureFileName + "_background.features.txt");
@@ -132,7 +132,7 @@ public class ContextMProphetExecutor {
 
 		// Score features in the .dia file against the library, split the results
 		try {
-			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath); // run this if the feature file hasn't been processed yet
+			ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListPath, 0); // run this if the feature file hasn't been processed yet
 			String featureFileName = baseName.replaceAll("\\.txt$", "");
 
 			File featureFile = new File(featureFileName + ".features.txt");
@@ -193,7 +193,7 @@ public class ContextMProphetExecutor {
 			}
 
 			try {
-				ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListFile.getAbsolutePath());
+				ContextFeatureScorer.scoreFeaturesForContext(library, diaFile, fasta, baseName, massListFile.getAbsolutePath(), 0);
 
 				File featureFile = new File(baseName + ".features.txt");
 

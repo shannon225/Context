@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -79,46 +80,47 @@ import edu.washington.gs.maccoss.encyclopedia.utils.threading.ProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.SubProgressIndicator;
 
 public class EncyclopediaTwo {
-	public static final String TARGET_LIBRARY_TAG="-l";
-	public static final String PREALIGNMENT_LIBRARY_TAG="-p";
-	public static final String OUTPUT_RESULT_TAG="-o";
-	public static final String INPUT_DIA_TAG="-i";
-	public static final String BACKGROUND_FASTA_TAG="-f";
+	public static final String TARGET_LIBRARY_TAG = "-l";
+	public static final String PREALIGNMENT_LIBRARY_TAG = "-p";
+	public static final String OUTPUT_RESULT_TAG = "-o";
+	public static final String INPUT_DIA_TAG = "-i";
+	public static final String BACKGROUND_FASTA_TAG = "-f";
 	public static final String QUIET_MODE_ARG = "-quiet";
-	public static final boolean useSqrt=false;
+	public static final boolean useSqrt = false;
 
 	public static void main(String[] args) {
-		HashMap<String, String> arguments=CommandLineParser.parseArguments(args);
-		arguments=InstrumentSpecificSearchParameters.checkParameters(arguments);
-		
-		if (arguments.size()==0) {
+		HashMap<String, String> arguments = CommandLineParser.parseArguments(args);
+		arguments = InstrumentSpecificSearchParameters.checkParameters(arguments);
+
+		if (arguments.size() == 0) {
 			SearchGUIMain.runGUI(ProgramType.EncyclopeDIA);
-			
-		} else if (arguments.size()==1&&arguments.containsKey(SearchParameters.ENABLE_ADVANCED_OPTIONS)) {
+
+		} else if (arguments.size() == 1 && arguments.containsKey(SearchParameters.ENABLE_ADVANCED_OPTIONS)) {
 			SearchGUIMain.runGUI(ProgramType.Global, true, false);
-			
+
 		} else if (arguments.containsKey("-browser")) {
 			DIABrowser.main(args);
-		
+
 		} else if (arguments.containsKey("-libexport")) {
 			SearchToBLIB.main(args);
-			
+
 		} else if (arguments.containsKey("-thesaurus")) {
 			Thesaurus.main(args);
-			
+
 		} else if (arguments.containsKey("-scribe")) {
 			Scribe.main(args);
-			
-		} else if (arguments.containsKey("-walnut")||arguments.containsKey("-pecan")) {
+
+		} else if (arguments.containsKey("-walnut") || arguments.containsKey("-pecan")) {
 			Walnut.main(args);
 
 		} else if (arguments.containsKey("-convert")) {
 			CLIConverter.main(args);
 
-		} else if (arguments.containsKey("-h")||arguments.containsKey("-help")||arguments.containsKey("--help")) {
+		} else if (arguments.containsKey("-h") || arguments.containsKey("-help") || arguments.containsKey("--help")) {
 			Logger.logLine("EncyclopeDIA Help");
 			Logger.timelessLogLine("EncyclopeDIA is a library search engine for DIA data.");
-			Logger.timelessLogLine("You should prefix your arguments with a high memory setting, e.g. \"-Xmx8g\" for 8gb");
+			Logger.timelessLogLine(
+					"You should prefix your arguments with a high memory setting, e.g. \"-Xmx8g\" for 8gb");
 			Logger.timelessLogLine("Required Parameters: ");
 			Logger.timelessLogLine("\t-i\tinput .DIA or .MZML file");
 			Logger.timelessLogLine("\t-f\tprotein .FASTA database");
@@ -132,67 +134,79 @@ public class EncyclopediaTwo {
 			Logger.timelessLogLine("\t-libexport\trun Library Export (use -libexport -h for Library Export help)");
 			Logger.timelessLogLine("\t-convert\trun files converter (use -convert -h for help)");
 			Logger.timelessLogLine("Other Parameters: ");
-			Logger.timelessLogLine("\t-o\toutput report file (default: [input file]"+EncyclopediaTwoJobData.OUTPUT_FILE_SUFFIX+")");
-			
-			TreeMap<String, String> defaults=new TreeMap<String, String>(SearchParameterParser.getDefaultParameters());
-			int maxWidth=0;
+			Logger.timelessLogLine("\t-o\toutput report file (default: [input file]"
+					+ EncyclopediaTwoJobData.OUTPUT_FILE_SUFFIX + ")");
+
+			TreeMap<String, String> defaults = new TreeMap<String, String>(
+					SearchParameterParser.getDefaultParameters());
+			int maxWidth = 0;
 			for (String key : defaults.keySet()) {
-				if (key.length()>maxWidth) maxWidth=key.length();
+				if (key.length() > maxWidth)
+					maxWidth = key.length();
 			}
 			for (Entry<String, String> entry : defaults.entrySet()) {
-				Logger.timelessLogLine("\t"+General.formatCellToWidth(entry.getKey(), maxWidth)+" (default: "+entry.getValue()+")");
+				Logger.timelessLogLine("\t" + General.formatCellToWidth(entry.getKey(), maxWidth) + " (default: "
+						+ entry.getValue() + ")");
 			}
 
-			Logger.timelessLogLine("\t"+QUIET_MODE_ARG+"\tsuppress log output to stdout/stderr");
+			Logger.timelessLogLine("\t" + QUIET_MODE_ARG + "\tsuppress log output to stdout/stderr");
 
 			System.exit(1);
-			
-		} else if (arguments.containsKey("-v")||arguments.containsKey("-version")||arguments.containsKey("--version")) {
-			Logger.logLine("EncyclopeDIA version "+ProgramType.getGlobalVersion());
+
+		} else if (arguments.containsKey("-v") || arguments.containsKey("-version")
+				|| arguments.containsKey("--version")) {
+			Logger.logLine("EncyclopeDIA version " + ProgramType.getGlobalVersion());
 			System.exit(1);
-			
+
 		} else {
 			VersioningDetector.checkVersionCLI(ProgramType.EncyclopeDIA);
-			
-			if (!arguments.containsKey(INPUT_DIA_TAG)||!arguments.containsKey(TARGET_LIBRARY_TAG)||!arguments.containsKey(BACKGROUND_FASTA_TAG)) {
-				Logger.errorLine("You are required to specify an input file ("+INPUT_DIA_TAG+"), a library file ("+TARGET_LIBRARY_TAG+"), and a fasta file ("+BACKGROUND_FASTA_TAG+")");
+
+			if (!arguments.containsKey(INPUT_DIA_TAG) || !arguments.containsKey(TARGET_LIBRARY_TAG)
+					|| !arguments.containsKey(BACKGROUND_FASTA_TAG)) {
+				Logger.errorLine("You are required to specify an input file (" + INPUT_DIA_TAG + "), a library file ("
+						+ TARGET_LIBRARY_TAG + "), and a fasta file (" + BACKGROUND_FASTA_TAG + ")");
 				System.exit(1);
 			}
 
-			File diaFile=new File(arguments.get(INPUT_DIA_TAG));
-			File libraryFile=new File(arguments.get(TARGET_LIBRARY_TAG));
-			File prealignmentLibraryFile=new File(arguments.get(EncyclopediaTwo.PREALIGNMENT_LIBRARY_TAG));
-			File fastaFile=new File(arguments.get(EncyclopediaTwo.BACKGROUND_FASTA_TAG));
+			File diaFile = new File(arguments.get(INPUT_DIA_TAG));
+			File libraryFile = new File(arguments.get(TARGET_LIBRARY_TAG));
+			File prealignmentLibraryFile = new File(arguments.get(EncyclopediaTwo.PREALIGNMENT_LIBRARY_TAG));
+			File fastaFile = new File(arguments.get(EncyclopediaTwo.BACKGROUND_FASTA_TAG));
 
 			File outputFile;
 			if (arguments.containsKey(OUTPUT_RESULT_TAG)) {
-				outputFile=new File(arguments.get(OUTPUT_RESULT_TAG));
+				outputFile = new File(arguments.get(OUTPUT_RESULT_TAG));
 			} else {
-				outputFile=new File(diaFile.getAbsolutePath()+EncyclopediaTwoJobData.OUTPUT_FILE_SUFFIX);
+				outputFile = new File(diaFile.getAbsolutePath() + EncyclopediaTwoJobData.OUTPUT_FILE_SUFFIX);
 			}
 
 			try {
 				if (arguments.containsKey(QUIET_MODE_ARG)) {
 					Logger.PRINT_TO_SCREEN = false;
 				}
-				FileLogRecorder logRecorder=new FileLogRecorder(new File(outputFile.getAbsolutePath()+EncyclopediaTwoJobData.LOG_FILE_SUFFIX));
+				FileLogRecorder logRecorder = new FileLogRecorder(
+						new File(outputFile.getAbsolutePath() + EncyclopediaTwoJobData.LOG_FILE_SUFFIX));
 				Logger.addRecorder(logRecorder);
 
-				Logger.logLine("EncyclopeDIA version "+ProgramType.getGlobalVersion());
-				
-				SearchParameters parameters=SearchParameterParser.parseParameters(arguments);
-				LibraryScoringFactory factory=EncyclopediaScoringFactory.getScoringFactory(arguments, parameters);
+				Logger.logLine("EncyclopeDIA version " + ProgramType.getGlobalVersion());
 
-				LibraryInterface prealignmentLibrary=BlibToLibraryConverter.getFile(prealignmentLibraryFile, fastaFile, parameters);
-				LibraryInterface library=BlibToLibraryConverter.getFile(libraryFile, fastaFile, parameters);
-				EncyclopediaTwoJobData job=new EncyclopediaTwoJobData(diaFile, fastaFile, prealignmentLibrary, library, outputFile, factory);
+				SearchParameters parameters = SearchParameterParser.parseParameters(arguments);
+				LibraryScoringFactory factory = EncyclopediaScoringFactory.getScoringFactory(arguments, parameters);
+
+				LibraryInterface prealignmentLibrary = BlibToLibraryConverter.getFile(prealignmentLibraryFile,
+						fastaFile, parameters);
+				LibraryInterface library = BlibToLibraryConverter.getFile(libraryFile, fastaFile, parameters);
+				EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(diaFile, fastaFile, prealignmentLibrary,
+						library, outputFile, factory);
 				runSearch(new EmptyProgressIndicator(), job);
 			} catch (Exception e) {
 				Logger.errorLine("Encountered Fatal Error!");
 				Logger.errorException(e);
 
-				// Forcibly exit with error to avoid hanging the process if there are any leftover user threads
-				// that weren't properly cleaned up as a result of the error. First we log any hung / remaining
+				// Forcibly exit with error to avoid hanging the process if there are any
+				// leftover user threads
+				// that weren't properly cleaned up as a result of the error. First we log any
+				// hung / remaining
 				// threads though, to aid debugging.
 
 				for (Entry<Thread, StackTraceElement[]> threadEntry : Thread.getAllStackTraces().entrySet()) {
@@ -214,26 +228,34 @@ public class EncyclopediaTwo {
 				Logger.close();
 			}
 
-			// Do not forcibly exit; this can cause a hang if any user threads aren't cleaned up.
+			// Do not forcibly exit; this can cause a hang if any user threads aren't
+			// cleaned up.
 		}
 	}
 
-	public static void runSearch(ProgressIndicator progress, EncyclopediaTwoJobData job) throws IOException, SQLException, DataFormatException, ExecutionException, InterruptedException {
+	public static void runSearch(ProgressIndicator progress, EncyclopediaTwoJobData job)
+			throws IOException, SQLException, DataFormatException, ExecutionException, InterruptedException {
 		if (job.getPercolatorFiles().hasDataAvailable()) {
 			try {
-				ArrayList<PercolatorPeptide> passingPeptidesFromTSV=PercolatorReader.getPassingPeptidesFromTSV(job.getPercolatorFiles().getPeptideOutputFile(), job.getParameters(), false).x;
-				
-				File elibFile=job.getResultLibrary();
+				ArrayList<PercolatorPeptide> passingPeptidesFromTSV = PercolatorReader.getPassingPeptidesFromTSV(
+						job.getPercolatorFiles().getPeptideOutputFile(), job.getParameters(), false).x;
+
+				File elibFile = job.getResultLibrary();
 				if (!elibFile.exists()) {
 					progress.update("Writing elib result library...");
 					Logger.logLine("Writing elib result library...");
-					ArrayList<SearchJobData> jobs=new ArrayList<SearchJobData>();
+					ArrayList<SearchJobData> jobs = new ArrayList<SearchJobData>();
 					jobs.add(job);
 					SearchToBLIB.convert(progress, jobs, elibFile, OutputFormat.ELIB, false, job.getParameters());
 				}
-				Logger.logLine("Previously found "+passingPeptidesFromTSV.size()+" peptides identified at "+(job.getParameters().getPercolatorThreshold()*100.0f)+"% FDR");
-				progress.update("Previously found "+passingPeptidesFromTSV.size()+" peptides identified at "+(job.getParameters().getPercolatorThreshold()*100.0f)+"% FDR", 1.0f);
-				//progress.update("Previously found "+passingPeptidesFromTSV.size()+" peptides ("+ParsimonyProteinGrouper.groupProteins(passingPeptidesFromTSV).size()+" proteins) identified at "+(job.getParameters().getPercolatorThreshold()*100.0f)+"% FDR", 1.0f);
+				Logger.logLine("Previously found " + passingPeptidesFromTSV.size() + " peptides identified at "
+						+ (job.getParameters().getPercolatorThreshold() * 100.0f) + "% FDR");
+				progress.update("Previously found " + passingPeptidesFromTSV.size() + " peptides identified at "
+						+ (job.getParameters().getPercolatorThreshold() * 100.0f) + "% FDR", 1.0f);
+				// progress.update("Previously found "+passingPeptidesFromTSV.size()+" peptides
+				// ("+ParsimonyProteinGrouper.groupProteins(passingPeptidesFromTSV).size()+"
+				// proteins) identified at
+				// "+(job.getParameters().getPercolatorThreshold()*100.0f)+"% FDR", 1.0f);
 
 				return;
 			} catch (Exception e) {
@@ -243,16 +265,16 @@ public class EncyclopediaTwo {
 				Logger.logLine("Just going to go ahead and reprocess this file!");
 			}
 		}
-		
-		job=OverlappingDiaPreprocessor.preprocess(progress, job);
-		Logger.logLine("Using "+job.getTaskFactory().getName());
-		Logger.logLine("Input File: "+job.getOriginalDiaFileName());
-		Logger.logLine("Prealignment Library File: "+job.getPrealignmentLibrary().getName());
-		Logger.logLine("Library File: "+job.getLibrary().getName());
-		Logger.logLine("Result File: "+job.getResultLibrary().getName());
+
+		job = OverlappingDiaPreprocessor.preprocess(progress, job);
+		Logger.logLine("Using " + job.getTaskFactory().getName());
+		Logger.logLine("Input File: " + job.getOriginalDiaFileName());
+		Logger.logLine("Prealignment Library File: " + job.getPrealignmentLibrary().getName());
+		Logger.logLine("Library File: " + job.getLibrary().getName());
+		Logger.logLine("Result File: " + job.getResultLibrary().getName());
 		Logger.logLine("Parameters:");
 		Logger.logLine(job.getParameters().toString());
-		
+
 		Logger.logLine("Converting files...");
 		progress.update("Converting files...", Float.MIN_VALUE);
 
@@ -260,74 +282,92 @@ public class EncyclopediaTwo {
 		runIterativeSearch(progress, job, stripefile);
 		stripefile.close();
 	}
-	
-	static void runIterativeSearch(ProgressIndicator progress, EncyclopediaTwoJobData job, StripeFileInterface stripefile) throws IOException, SQLException, DataFormatException, ExecutionException, InterruptedException {
-		long startTime=System.currentTimeMillis();
-		LibraryScoringFactory taskFactory=job.getTaskFactory();
-		SearchParameters parameters=taskFactory.getParameters();
-	
-		Pair<MProphetResult, TargeteDecoyPSMFilter> mprophetResults=null;
-		float percentage=0.0f;
-		
+
+	static void runIterativeSearch(ProgressIndicator progress, EncyclopediaTwoJobData job,
+			StripeFileInterface stripefile)
+					throws IOException, SQLException, DataFormatException, ExecutionException, InterruptedException {
+		long startTime = System.currentTimeMillis();
+		LibraryScoringFactory taskFactory = job.getTaskFactory();
+		SearchParameters parameters = taskFactory.getParameters();
+
+		Pair<MProphetResult, TargeteDecoyPSMFilter> mprophetResults = null;
+		float percentage = 0.0f;
+
 		if (!parameters.isSkipLibraryRetentionTime()) {
-			float fraction=0.0f;
+			float fraction = 0.0f;
 			LibraryInterface prealignmentLibrary;
-			if (job.getLibrary()==job.getPrealignmentLibrary()) {
+			if (job.getLibrary() == job.getPrealignmentLibrary()) {
 				Logger.logLine("Pre-alignment library and search library are the same so no alignment necessary.");
-				prealignmentLibrary=job.getPrealignmentLibrary();
-				fraction=0.5f;
+				prealignmentLibrary = job.getPrealignmentLibrary();
+				fraction = 0.5f;
 			} else {
-				Logger.logLine("Aligning pre-alignment library to "+job.getLibrary().getName());
-				prealignmentLibrary=LibraryUtilities.getReferenceCorrectedLibrary(job.getPrealignmentLibrary(), job.getLibrary());
+				Logger.logLine("Aligning pre-alignment library to " + job.getLibrary().getName());
+				prealignmentLibrary = LibraryUtilities.getReferenceCorrectedLibrary(job.getPrealignmentLibrary(),
+						job.getLibrary());
 				int preAlignSize = prealignmentLibrary.size();
-				fraction=preAlignSize/(float)(preAlignSize+job.getLibrary().size());
+				fraction = preAlignSize / (float) (preAlignSize + job.getLibrary().size());
 			}
-			
-			percentage = Math.min(0.5f, fraction*2f)-0.05f;
-			ProgressIndicator subProgress1=new SubProgressIndicator(progress, percentage);
-	
-			Logger.logLine("Calculating pre-alignment features for "+job.getLibrary().getName());
-			PSMConsumer saveResultsConsumer1=generateFeatureFile(subProgress1, prealignmentLibrary, job, stripefile, Optional.empty());
-	
+
+			percentage = Math.min(0.5f, fraction * 2f) - 0.05f;
+			ProgressIndicator subProgress1 = new SubProgressIndicator(progress, percentage);
+
+			Logger.logLine("Calculating pre-alignment features for " + job.getLibrary().getName());
+			PSMConsumer saveResultsConsumer1 = generateFeatureFile(subProgress1, prealignmentLibrary, job, stripefile,
+					Optional.empty());
+
 			Logger.logLine("Assessing FDR...");
-			mprophetResults=firstPassFDR(subProgress1, job, stripefile, saveResultsConsumer1);
-	
-			if (mprophetResults.getX().getPassingPeptides().size()==0) {
-				Logger.errorLine("Found zero peptides after pre-alignment, consider searching a different pre-alignment library!");
+			mprophetResults = firstPassFDR(subProgress1, job, stripefile, saveResultsConsumer1);
+
+			if (mprophetResults.getX().getPassingPeptides().size() == 0) {
+				Logger.errorLine(
+						"Found zero peptides after pre-alignment, consider searching a different pre-alignment library!");
 				Logger.errorLine("Exiting early from failed analysis.");
 				return;
 			}
 		}
 
-		SubProgressIndicator subProgress2=new SubProgressIndicator(progress, 1.0f-percentage-0.05f);
-		Logger.logLine("Calculating post-alignment features for "+job.getLibrary().getName());
-		PSMConsumer saveResultsConsumer2=generateFeatureFile(subProgress2, job.getLibrary(), job, stripefile, Optional.ofNullable(mprophetResults));
+		SubProgressIndicator subProgress2 = new SubProgressIndicator(progress, 1.0f - percentage - 0.05f);
+		Logger.logLine("Calculating post-alignment features for " + job.getLibrary().getName());
+		PSMConsumer saveResultsConsumer2 = generateFeatureFile(subProgress2, job.getLibrary(), job, stripefile,
+				Optional.ofNullable(mprophetResults));
 
-		SubProgressIndicator subProgress3=new SubProgressIndicator(progress, 0.05f);
+		SubProgressIndicator subProgress3 = new SubProgressIndicator(progress, 0.05f);
 		Logger.logLine("Assessing FDR...");
-		//percolatorResults=percolatePeptides(subProgress, job, stripefile, saveResultsConsumer);
-		Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter> percolatorResults=repercolatePeptides(subProgress3, job, stripefile, saveResultsConsumer2);
-		
-		ArrayList<PercolatorPeptide> passingPeptides=percolatorResults.getX();
-		
+		// percolatorResults=percolatePeptides(subProgress, job, stripefile,
+		// saveResultsConsumer);
+		Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter> percolatorResults = repercolatePeptides(subProgress3,
+				job, stripefile, saveResultsConsumer2);
+
+		ArrayList<PercolatorPeptide> passingPeptides = percolatorResults.getX();
+
 		Logger.logLine("Writing elib result library...");
-		File elibFile=job.getResultLibrary();
-		ArrayList<SearchJobData> jobs=new ArrayList<SearchJobData>();
+		File elibFile = job.getResultLibrary();
+		ArrayList<SearchJobData> jobs = new ArrayList<SearchJobData>();
 		jobs.add(job);
-		
+
 		SearchToBLIB.convertElib(subProgress3, job, elibFile, parameters, parameters.isIntegratePrecursors());
-		
-		progress.update("Found "+passingPeptides.size()+" peptides identified at "+(job.getParameters().getPercolatorThreshold()*100.0f)+"% FDR", 1.0f);
-		Logger.logLine("Finished analysis! "+passingPeptides.size()+" peptides identified at "+(parameters.getPercolatorThreshold()*100f)+"% FDR ("+(Math.round((System.currentTimeMillis()-startTime)/1000f/6f)/10f)+" minutes)");
-		Logger.logLine(""); 
+
+		progress.update("Found " + passingPeptides.size() + " peptides identified at "
+				+ (job.getParameters().getPercolatorThreshold() * 100.0f) + "% FDR", 1.0f);
+		Logger.logLine("Finished analysis! " + passingPeptides.size() + " peptides identified at "
+				+ (parameters.getPercolatorThreshold() * 100f) + "% FDR ("
+				+ (Math.round((System.currentTimeMillis() - startTime) / 1000f / 6f) / 10f) + " minutes)");
+		Logger.logLine("");
 	}
 
-	public static PSMConsumer generateFeatureFile(ProgressIndicator progress, LibraryInterface library, EncyclopediaTwoJobData job, StripeFileInterface stripefile, Optional<Pair<MProphetResult, TargeteDecoyPSMFilter>> prelimAnalysis) throws IOException, SQLException, DataFormatException, InterruptedException {
+	public static PSMConsumer generateFeatureFile(ProgressIndicator progress, LibraryInterface library,
+			EncyclopediaTwoJobData job, StripeFileInterface stripefile,
+			Optional<Pair<MProphetResult, TargeteDecoyPSMFilter>> prelimAnalysis)
+					throws IOException, SQLException, DataFormatException, InterruptedException {
+		return generateFeatureFile(progress, library, job, stripefile, prelimAnalysis, OptionalInt.empty());
+	}
+
+	public static PSMConsumer generateFeatureFile(ProgressIndicator progress, LibraryInterface library, EncyclopediaTwoJobData job, StripeFileInterface stripefile, Optional<Pair<MProphetResult, TargeteDecoyPSMFilter>> prelimAnalysis, OptionalInt shuffledSeed) throws IOException, SQLException, DataFormatException, InterruptedException {
 
 		LibraryScoringFactory taskFactory=job.getTaskFactory();
 		SearchParameters parameters=taskFactory.getParameters();
 		File featureFile=job.getPercolatorFiles().getInputTSV();
-		
+
 		int cores=parameters.getNumberOfThreadsUsed();
 
 		Logger.logLine("Processing precursors scans...");
@@ -342,13 +382,14 @@ public class EncyclopediaTwo {
 				}
 			}
 		}
+
 		Collections.sort(ranges);
 
 		assert(taskFactory instanceof EncyclopediaTwoScoringFactory);
 		PSMScorer scorer = taskFactory.getLibraryScorer(null);
 		assert(scorer instanceof EncyclopediaTwoScorer);
 		scorer=new EncyclopediaTwoLDAScorer((EncyclopediaTwoScorer)scorer, prelimAnalysis);
-		
+
 		PeptideScoringResultsConsumer writeResultsConsumer;
 		if (taskFactory instanceof EncyclopediaTwoScoringFactory) {
 			writeResultsConsumer=((EncyclopediaTwoScoringFactory)taskFactory).getResultsConsumer(featureFile, scorer.getAuxScoreNames(null), new LinkedBlockingQueue<AbstractScoringResult>(), stripefile, library);
@@ -356,7 +397,7 @@ public class EncyclopediaTwo {
 			writeResultsConsumer=taskFactory.getResultsConsumer(featureFile, new LinkedBlockingQueue<AbstractScoringResult>(), stripefile, library);
 		}
 		PSMConsumer saveResultsConsumer=new PSMConsumer(new LinkedBlockingQueue<AbstractScoringResult>(), parameters.getAAConstants());
-		
+
 		BlockingQueue<AbstractScoringResult> resultsQueue=new LinkedBlockingQueue<AbstractScoringResult>();
 		TeeResultsConsumer teeConsumer=new TeeResultsConsumer(resultsQueue, writeResultsConsumer, saveResultsConsumer);
 		Thread consumer1Thread=new Thread(teeConsumer);
@@ -374,12 +415,12 @@ public class EncyclopediaTwo {
 
 			ArrayList<LibraryEntry> nextEntries=library.getEntries(ranges.get(0), useSqrt, parameters.getAAConstants());
 			ArrayList<FragmentScan> nextStripes=stripefile.getStripes(ranges.get(0).getMiddle(), -Float.MAX_VALUE, Float.MAX_VALUE, useSqrt);
-			
+
 			for (int rangeIndex = 0; rangeIndex < ranges.size(); rangeIndex++) {
 				Range range=ranges.get(rangeIndex);
 				ArrayList<LibraryEntry> entries=nextEntries;
 				ArrayList<FragmentScan> stripes=nextStripes;
-				
+
 				String baseMessage = "Working on " + range + " m/z";
 				float baseIncrement = 1.0f / numberOfTasks;
 				float baseProgress = (1.0f + rangesFinished) / numberOfTasks;
@@ -422,205 +463,230 @@ public class EncyclopediaTwo {
 						tasks.add(entry);
 						tasks.add(entry.getDecoy(parameters));
 
-						float extraDecoys = parameters.getNumberOfExtraDecoyLibrariesSearched();
-						while (extraDecoys > 0.0f) {
-							if (extraDecoys < 1.0f) {
-								// check percentage
-								float test = RandomGenerator.random(count);
-								if (test > extraDecoys) {
-									break;
-								}
-							}
-							extraDecoys = extraDecoys - 1.0f;
-							LibraryEntry shuffle = entry.getShuffle(parameters, Float.hashCode(extraDecoys), false);
+						if (shuffledSeed.isPresent()) {
+							int seed = shuffledSeed.getAsInt();
+							LibraryEntry shuffle = entry.getShuffle(parameters, seed, false);
+
 							tasks.add(shuffle);
-							tasks.add(shuffle.getDecoy(parameters));
-						}
-
-						ArrayList<FragmentScan> localStripes;
-						if (prelimAnalysis.isPresent()) {
-							localStripes = getScanSubsetFromStripes(entry, prelimAnalysis.get().getY(), stripes, rts);
+							tasks.add(shuffle.getDecoy(parameters)); 
 						} else {
-							localStripes = stripes;
+							float extraDecoys = parameters.getNumberOfExtraDecoyLibrariesSearched();
+							while (extraDecoys > 0.0f) {
+								if (extraDecoys < 1.0f) { 
+									float test = RandomGenerator.random(count);
+
+									if (test > extraDecoys) {
+										break; 
+									}
+								}
+								extraDecoys = extraDecoys - 1.0f;
+								LibraryEntry shuffle = entry.getShuffle(parameters, Float.hashCode(extraDecoys), false);
+
+								tasks.add(shuffle);
+								tasks.add(shuffle.getDecoy(parameters));
+
 						}
-						executor.submit(taskFactory.getScoringTask(scorer, tasks, localStripes, range, dutyCycle, precursors, resultsQueue));
 					}
-
-					if (rangeIndex+1<ranges.size()) {
-						nextEntries=library.getEntries(ranges.get(rangeIndex+1), useSqrt, parameters.getAAConstants());
-						nextStripes=stripefile.getStripes(ranges.get(rangeIndex+1).getMiddle(), -Float.MAX_VALUE, Float.MAX_VALUE, useSqrt);
+					ArrayList<FragmentScan> localStripes;
+					if (prelimAnalysis.isPresent()) {
+						localStripes = getScanSubsetFromStripes(entry, prelimAnalysis.get().getY(), stripes, rts);
+					} else {
+						localStripes = stripes;
 					}
-
-					executor.shutdown();
-					while (!executor.isTerminated()) {
-						Logger.logLine(workQueue.size() + " peptides remaining for " + range + "...");
-						float finishedFraction = (count - workQueue.size()) / (float) count;
-						progress.update(baseMessage, baseProgress + baseIncrement * (0.2f + finishedFraction * 0.8f));
-						Thread.sleep(500);
-					}
-					executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+					executor.submit(taskFactory.getScoringTask(scorer, tasks, localStripes, range, dutyCycle, precursors, resultsQueue));
 				}
 
-				rangesFinished++;
+				if (rangeIndex+1<ranges.size()) {
+					nextEntries=library.getEntries(ranges.get(rangeIndex+1), useSqrt, parameters.getAAConstants());
+					nextStripes=stripefile.getStripes(ranges.get(rangeIndex+1).getMiddle(), -Float.MAX_VALUE, Float.MAX_VALUE, useSqrt);
+				}
+
+				executor.shutdown();
+				while (!executor.isTerminated()) {
+					Logger.logLine(workQueue.size() + " peptides remaining for " + range + "...");
+					float finishedFraction = (count - workQueue.size()) / (float) count;
+					progress.update(baseMessage, baseProgress + baseIncrement * (0.2f + finishedFraction * 0.8f));
+					Thread.sleep(500);
+				}
+				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			}
 
-			progress.update("Organizing results", (1.0f+rangesFinished)/numberOfTasks);
-		} finally {
-			// The queue MUST be poisoned to avoid a hang due to leftover threads!
-			resultsQueue.put(AbstractScoringResult.POISON_RESULT);
+			rangesFinished++;
+		}
 
-			// Wait until the threads we started finish, to ensure they've cleaned up
-			// before we move on e.g. with handling a thrown exception.
-			consumer1Thread.join();
-			consumer2Thread.join();
-			consumer3Thread.join();
-			teeConsumer.close();
-		} 
+		progress.update("Organizing results", (1.0f+rangesFinished)/numberOfTasks);
+	}finally
 
-		Logger.logLine(writeResultsConsumer.getNumberProcessed()+" total peptides processed.");
+	{
+		// The queue MUST be poisoned to avoid a hang due to leftover threads!
+		resultsQueue.put(AbstractScoringResult.POISON_RESULT);
 
-		return saveResultsConsumer;
+		// Wait until the threads we started finish, to ensure they've cleaned up
+		// before we move on e.g. with handling a thrown exception.
+		consumer1Thread.join();
+		consumer2Thread.join();
+		consumer3Thread.join();
+		teeConsumer.close();
 	}
 
-	static ArrayList<FragmentScan> getScanSubsetFromStripes(LibraryEntry entry, TargeteDecoyPSMFilter filter, ArrayList<FragmentScan> allScansInStripe, float[] rts) {
-		float modelRT=entry.getScanStartTime()/60f;
-		float realRT=filter.getYRT(modelRT)*60f;
-		ArrayList<FragmentScan> subset=new ArrayList<FragmentScan>();
+	Logger.logLine(writeResultsConsumer.getNumberProcessed()+" total peptides processed.");
 
-		// find center
-		int index=Arrays.binarySearch(rts, realRT);
-		if (index<0) {
-			index=-(index+1);
-		}
-		if (index>=allScansInStripe.size()) index=allScansInStripe.size()-1;
-		if (index<0) {
-			// no scans
-			return subset;
-		}
-		// for before the center, add at end, then reverse
-		for (int i = index; i >= 0; i--) {
-			float actualRT=allScansInStripe.get(i).getScanStartTime()/60f;
-			boolean passes=filter.getRtFilter().getProbabilityFitsModel(actualRT, modelRT)>=0.5f;
-			if (passes) {
-				subset.add(allScansInStripe.get(i));
-			} else {
-				break;
-			}
-		}
-		Collections.reverse(subset);
-		
-		// then for after the center (+1) add to the end
-		for (int i = index+1; i < rts.length; i++) {
-			float actualRT=allScansInStripe.get(i).getScanStartTime()/60f;
-			boolean passes=filter.getRtFilter().getProbabilityFitsModel(actualRT, modelRT)>=0.5f;
-			if (passes) {
-				subset.add(allScansInStripe.get(i));
-			} else {
-				break;
-			}
-		}
-		
+	return saveResultsConsumer;
+}
+
+static ArrayList<FragmentScan> getScanSubsetFromStripes(LibraryEntry entry, TargeteDecoyPSMFilter filter, ArrayList<FragmentScan> allScansInStripe, float[] rts) {
+	float modelRT=entry.getScanStartTime()/60f;
+	float realRT=filter.getYRT(modelRT)*60f;
+	ArrayList<FragmentScan> subset=new ArrayList<FragmentScan>();
+
+	// find center
+	int index=Arrays.binarySearch(rts, realRT);
+	if (index<0) {
+		index=-(index+1);
+	}
+	if (index>=allScansInStripe.size()) index=allScansInStripe.size()-1;
+	if (index<0) {
+		// no scans
 		return subset;
 	}
-
-	public static Pair<MProphetResult, TargeteDecoyPSMFilter> firstPassFDR(ProgressIndicator progress, EncyclopediaTwoJobData job, StripeFileInterface stripefile, PSMConsumer saveResultsConsumer) throws IOException, FileNotFoundException, UnsupportedEncodingException, InterruptedException {
-		SearchParameters parameters=job.getParameters();
-		
-		try {
-			progress.update("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-			Logger.logLine("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-
-			MProphetExecutionData mprophetData=new MProphetExecutionData(job.getPercolatorFiles());
-			MProphetResult result=MProphetReiter.executeMProphetTSV(mprophetData, job.getParameters().getPercolatorThreshold(), job.getParameters().getAAConstants(), 1);
-			ArrayList<PercolatorPeptide> passingPeptides=result.getPassingPeptides();
-			Logger.logLine("First pass: "+passingPeptides.size()+" peptides identified at "+(parameters.getPercolatorThreshold()*100f)+"% FDR");
-			
-			ArrayList<PSMInterface> data=saveResultsConsumer.getSavedResults();
-			ArrayList<PercolatorPeptide> decoyPeptides = getDecoyPeptides(job, parameters, passingPeptides.size());
-			TargeteDecoyPSMFilter filter=getRescoringModel(passingPeptides, decoyPeptides, data, job, false);
-			
-			return new Pair<MProphetResult, TargeteDecoyPSMFilter>(result, filter);
-		} catch (EncyclopediaException e) {
-			Logger.errorLine("Fatal Error: "+e.getMessage());
-			Logger.errorLine("Sorry, not feeling well today! Try again tomorrow!");
-			progress.update("Fatal Error: "+e.getMessage(), -1.0f);
-			throw e;
+	// for before the center, add at end, then reverse
+	for (int i = index; i >= 0; i--) {
+		float actualRT=allScansInStripe.get(i).getScanStartTime()/60f;
+		boolean passes=filter.getRtFilter().getProbabilityFitsModel(actualRT, modelRT)>=0.5f;
+		if (passes) {
+			subset.add(allScansInStripe.get(i));
+		} else {
+			break;
 		}
 	}
-	
-	public static Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter> repercolatePeptides(ProgressIndicator progress, EncyclopediaTwoJobData job, StripeFileInterface stripefile, PSMConsumer saveResultsConsumer) throws IOException, FileNotFoundException, UnsupportedEncodingException, InterruptedException {
-		SearchParameters parameters=job.getParameters();
-		
-		try {
-			ArrayList<PSMInterface> data=saveResultsConsumer.getSavedResults();
-			
-			ArrayList<PercolatorPeptide> passingPeptides;
-			if (parameters.isUsePercolator()) {
-				progress.update("Running Percolator ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-				Logger.logLine("Running Percolator ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-				Pair<ArrayList<PercolatorPeptide>, Float> pair=PercolatorExecutor.executePercolatorTSV(parameters.getPercolatorVersionNumber(), job.getPercolatorFiles(), parameters.getEffectivePercolatorThreshold(), parameters.getAAConstants(), 2);
-				passingPeptides=pair.x;
-			} else {
-				progress.update("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-				Logger.logLine("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
-	
-				MProphetExecutionData mprophetData=new MProphetExecutionData(job.getPercolatorFiles());
-				MProphetResult result=MProphetReiter.executeMProphetTSV(mprophetData, job.getParameters().getPercolatorThreshold(), job.getParameters().getAAConstants(), 1);
-				passingPeptides=result.getPassingPeptides();
-			}
-			// FIXME THIS NEVER REALIGNS THE RETENTION TIMES
-			ArrayList<PercolatorPeptide> decoyPeptides = getDecoyPeptides(job, parameters, passingPeptides.size());
-			TargeteDecoyPSMFilter filter=getRescoringModel(passingPeptides, decoyPeptides, data, job, true);
-			
-			progress.update(passingPeptides.size()+" peptides identified at "+(parameters.getPercolatorThreshold()*100.0f)+"% FDR", 1.0f);
-			return new Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter>(passingPeptides, filter);
-			
-		} catch (EncyclopediaException e) {
-			Logger.errorLine("Fatal Error: "+e.getMessage());
-			Logger.errorLine("Sorry, not feeling well today! Try again tomorrow!");
-			progress.update("Fatal Error: "+e.getMessage(), -1.0f);
-			throw e;
+	Collections.reverse(subset);
+
+	// then for after the center (+1) add to the end
+	for (int i = index+1; i < rts.length; i++) {
+		float actualRT=allScansInStripe.get(i).getScanStartTime()/60f;
+		boolean passes=filter.getRtFilter().getProbabilityFitsModel(actualRT, modelRT)>=0.5f;
+		if (passes) {
+			subset.add(allScansInStripe.get(i));
+		} else {
+			break;
 		}
 	}
 
-	private static ArrayList<PercolatorPeptide> getDecoyPeptides(EncyclopediaTwoJobData job,
-			SearchParameters parameters, int size) {
-		ArrayList<PercolatorPeptide> decoyPeptides=new ArrayList<PercolatorPeptide>();
-		Pair<ArrayList<PercolatorPeptide>, Float> allDecoyPeptides=PercolatorReader.getPassingPeptidesFromTSV(job.getPercolatorFiles().getPeptideDecoyFile(), 1.0f, parameters.getAAConstants(), true);
-		for (PercolatorPeptide peptide : allDecoyPeptides.x) {
-			if (decoyPeptides.size()<size) {
-				decoyPeptides.add(peptide);
-			}
+	return subset;
+}
+
+public static Pair<MProphetResult, TargeteDecoyPSMFilter> firstPassFDR(ProgressIndicator progress, EncyclopediaTwoJobData job, StripeFileInterface stripefile, PSMConsumer saveResultsConsumer) throws IOException, FileNotFoundException, UnsupportedEncodingException, InterruptedException {
+	SearchParameters parameters=job.getParameters();
+
+	try {
+		progress.update("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
+		Logger.logLine("Running mProphet ("+(parameters.getPercolatorThreshold()*100f)+"%)");
+
+		MProphetExecutionData mprophetData=new MProphetExecutionData(job.getPercolatorFiles());
+		MProphetResult result=MProphetReiter.executeMProphetTSV(mprophetData, job.getParameters().getPercolatorThreshold(), job.getParameters().getAAConstants(), 1);
+		ArrayList<PercolatorPeptide> passingPeptides=result.getPassingPeptides();
+		Logger.logLine("First pass: "+passingPeptides.size()+" peptides identified at "+(parameters.getPercolatorThreshold()*100f)+"% FDR");
+
+		ArrayList<PSMInterface> data=saveResultsConsumer.getSavedResults();
+		ArrayList<PercolatorPeptide> decoyPeptides = getDecoyPeptides(job, parameters, passingPeptides.size());
+		TargeteDecoyPSMFilter filter=getRescoringModel(passingPeptides, decoyPeptides, data, job, false);
+
+		return new Pair<MProphetResult, TargeteDecoyPSMFilter>(result, filter);
+	} catch (EncyclopediaException e) {
+		Logger.errorLine("Fatal Error: "+e.getMessage());
+		Logger.errorLine("Sorry, not feeling well today! Try again tomorrow!");
+		progress.update("Fatal Error: "+e.getMessage(), -1.0f);
+		throw e;
+	}
+}
+
+public static Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter> repercolatePeptides(
+		ProgressIndicator progress, EncyclopediaTwoJobData job, StripeFileInterface stripefile,
+		PSMConsumer saveResultsConsumer)
+				throws IOException, FileNotFoundException, UnsupportedEncodingException, InterruptedException {
+	SearchParameters parameters = job.getParameters();
+
+	try {
+		ArrayList<PSMInterface> data = saveResultsConsumer.getSavedResults();
+
+		ArrayList<PercolatorPeptide> passingPeptides;
+		if (parameters.isUsePercolator()) {
+			progress.update("Running Percolator (" + (parameters.getPercolatorThreshold() * 100f) + "%)");
+			Logger.logLine("Running Percolator (" + (parameters.getPercolatorThreshold() * 100f) + "%)");
+			Pair<ArrayList<PercolatorPeptide>, Float> pair = PercolatorExecutor.executePercolatorTSV(
+					parameters.getPercolatorVersionNumber(), job.getPercolatorFiles(),
+					parameters.getEffectivePercolatorThreshold(), parameters.getAAConstants(), 2);
+			passingPeptides = pair.x;
+		} else {
+			progress.update("Running mProphet (" + (parameters.getPercolatorThreshold() * 100f) + "%)");
+			Logger.logLine("Running mProphet (" + (parameters.getPercolatorThreshold() * 100f) + "%)");
+
+			MProphetExecutionData mprophetData = new MProphetExecutionData(job.getPercolatorFiles());
+			MProphetResult result = MProphetReiter.executeMProphetTSV(mprophetData,
+					job.getParameters().getPercolatorThreshold(), job.getParameters().getAAConstants(), 1);
+			passingPeptides = result.getPassingPeptides();
 		}
-		return decoyPeptides;
+		// FIXME THIS NEVER REALIGNS THE RETENTION TIMES
+		ArrayList<PercolatorPeptide> decoyPeptides = getDecoyPeptides(job, parameters, passingPeptides.size());
+		TargeteDecoyPSMFilter filter = getRescoringModel(passingPeptides, decoyPeptides, data, job, true);
+
+		progress.update(passingPeptides.size() + " peptides identified at "
+				+ (parameters.getPercolatorThreshold() * 100.0f) + "% FDR", 1.0f);
+		return new Pair<ArrayList<PercolatorPeptide>, TargeteDecoyPSMFilter>(passingPeptides, filter);
+
+	} catch (EncyclopediaException e) {
+		Logger.errorLine("Fatal Error: " + e.getMessage());
+		Logger.errorLine("Sorry, not feeling well today! Try again tomorrow!");
+		progress.update("Fatal Error: " + e.getMessage(), -1.0f);
+		throw e;
+	}
+}
+
+private static ArrayList<PercolatorPeptide> getDecoyPeptides(EncyclopediaTwoJobData job,
+		SearchParameters parameters, int size) {
+	ArrayList<PercolatorPeptide> decoyPeptides = new ArrayList<PercolatorPeptide>();
+	Pair<ArrayList<PercolatorPeptide>, Float> allDecoyPeptides = PercolatorReader.getPassingPeptidesFromTSV(
+			job.getPercolatorFiles().getPeptideDecoyFile(), 1.0f, parameters.getAAConstants(), true);
+	for (PercolatorPeptide peptide : allDecoyPeptides.x) {
+		if (decoyPeptides.size() < size) {
+			decoyPeptides.add(peptide);
+		}
+	}
+	return decoyPeptides;
+}
+
+public static TargeteDecoyPSMFilter getRescoringModel(ArrayList<PercolatorPeptide> passingPeptides,
+		ArrayList<PercolatorPeptide> decoyPeptides, ArrayList<PSMInterface> data, EncyclopediaTwoJobData job,
+		boolean finalPass) {
+	ArrayList<PSMInterface> passingPSMs = passingPeptides(passingPeptides, data);
+	ArrayList<PSMInterface> decoyPSMs = passingPeptides(decoyPeptides, data);
+
+	Logger.logLine("Generating retention time mapping using " + passingPSMs.size() + "/" + passingPeptides.size()
+	+ " target and " + decoyPSMs.size() + "/" + decoyPeptides.size() + " decoy points...");
+	TargeteDecoyPSMFilter filter = new TargeteDecoyPSMFilter(job.getParameters(), passingPSMs, decoyPSMs);
+
+	final String passTag = finalPass ? ".final" : ".first";
+	filter.makePlots(job.getParameters(), passingPSMs, Optional
+			.ofNullable(new File(job.getPercolatorFiles().getPeptideOutputFile().getAbsolutePath() + passTag)));
+	return filter;
+}
+
+private static ArrayList<PSMInterface> passingPeptides(ArrayList<PercolatorPeptide> passingPeptides,
+		ArrayList<PSMInterface> data) {
+	HashSet<String> passingSeqs = new HashSet<String>();
+	for (PercolatorPeptide pass : passingPeptides) {
+		passingSeqs.add(PercolatorPeptide.getPeptideSequence(pass.getPsmID()) + "+"
+				+ PercolatorPeptide.getCharge(pass.getPsmID()));
 	}
 
-	public static TargeteDecoyPSMFilter getRescoringModel(ArrayList<PercolatorPeptide> passingPeptides, ArrayList<PercolatorPeptide> decoyPeptides, ArrayList<PSMInterface> data, EncyclopediaTwoJobData job, boolean finalPass) {
-		ArrayList<PSMInterface> passingPSMs = passingPeptides(passingPeptides, data);
-		ArrayList<PSMInterface> decoyPSMs = passingPeptides(decoyPeptides, data);
-		
-		Logger.logLine("Generating retention time mapping using "+passingPSMs.size()+"/"+passingPeptides.size()+" target and "+decoyPSMs.size()+"/"+decoyPeptides.size()+" decoy points...");
-		TargeteDecoyPSMFilter filter=new TargeteDecoyPSMFilter(job.getParameters(), passingPSMs, decoyPSMs);
-		
-		final String passTag=finalPass?".final":".first";
-		filter.makePlots(job.getParameters(), passingPSMs, Optional.ofNullable(new File(job.getPercolatorFiles().getPeptideOutputFile().getAbsolutePath()+passTag)));
-		return filter;
-	}
+	ArrayList<PSMInterface> passingPSMs = new ArrayList<>();
 
-	private static ArrayList<PSMInterface> passingPeptides(ArrayList<PercolatorPeptide> passingPeptides, ArrayList<PSMInterface> data) {
-		HashSet<String> passingSeqs=new HashSet<String>();
-		for (PercolatorPeptide pass : passingPeptides) {
-			passingSeqs.add(PercolatorPeptide.getPeptideSequence(pass.getPsmID())+"+"+PercolatorPeptide.getCharge(pass.getPsmID()));
+	for (PSMInterface result : data) {
+		String peptideModSeq = result.getLibraryEntry().getPeptideModSeq();
+		if (passingSeqs.contains(peptideModSeq + "+" + result.getLibraryEntry().getPrecursorCharge())) {
+			passingPSMs.add(result);
 		}
-
-		ArrayList<PSMInterface> passingPSMs=new ArrayList<>();
-		
-		for (PSMInterface result : data) {
-			String peptideModSeq=result.getLibraryEntry().getPeptideModSeq();
-			if (passingSeqs.contains(peptideModSeq+"+"+result.getLibraryEntry().getPrecursorCharge())) {
-				passingPSMs.add(result);
-			}
-		}
-		return passingPSMs;
 	}
+	return passingPSMs;
+}
 }

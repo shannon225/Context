@@ -34,7 +34,7 @@ public class MassListDecoyGeneratorTest {
 
 	@Test
 	public void addsOneDecoyPerTarget() throws IOException {
-		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addDecoysToAssay(targetsOnly().getAbsolutePath());
+		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addShuffledDecoysToAssay(targetsOnly().getAbsolutePath(), 0);
 
 		int targets = 0;
 		int decoys = 0;
@@ -47,7 +47,7 @@ public class MassListDecoyGeneratorTest {
 
 	@Test
 	public void decoysKeepTheirTargetsWindow() throws IOException {
-		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addDecoysToAssay(targetsOnly().getAbsolutePath());
+		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addShuffledDecoysToAssay(targetsOnly().getAbsolutePath(), 0);
 
 		IsolationWindow target = windows.get(0);
 		IsolationWindow decoy = windows.get(1);
@@ -63,8 +63,8 @@ public class MassListDecoyGeneratorTest {
 		File first = new File(folder.getRoot(), "first.txt");
 		File second = new File(folder.getRoot(), "second.txt");
 
-		File once = MassListDecoyGenerator.checkIfDecoysArePresent(targetsOnly(), folder.getRoot(), "first");
-		File twice = MassListDecoyGenerator.checkIfDecoysArePresent(once, folder.getRoot(), "second");
+		File once = MassListDecoyGenerator.checkIfDecoysArePresent(targetsOnly(), folder.getRoot(), 1);
+		File twice = MassListDecoyGenerator.checkIfDecoysArePresent(once, folder.getRoot(), 1);
 
 		assertTrue(MassListDecoyGenerator.hasDecoys(once.getAbsolutePath()));
 		assertEquals("an assay that already has decoys is passed through unchanged", once, twice);
@@ -78,7 +78,7 @@ public class MassListDecoyGeneratorTest {
 				"AHSQDENK\t\t(no adduct)\t464.7095878086647\t2\t13.984958\t5.0\tfalse",
 				"ANEDQSHK\t\t(no adduct)\t464.7095878086647\t2\t13.984958\t5.0\ttrue");
 
-		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addDecoysToAssay(prepared.getAbsolutePath());
+		ArrayList<IsolationWindow> windows = MassListDecoyGenerator.addShuffledDecoysToAssay(prepared.getAbsolutePath(), 0);
 
 		int targets = 0;
 		int decoys = 0;

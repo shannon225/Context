@@ -49,7 +49,7 @@ public class ContextFeatureScorerTest {
 		
 		String baseName = rawFile.toString().replaceFirst("\\.dia$", "");
 
-			ArrayList<ScoredFeature> partitionedFeatures = ContextFeatureScorer.scoreFeaturesForContext(library, rawFile, fasta, baseName, massListPath);
+			ArrayList<ScoredFeature> partitionedFeatures = ContextFeatureScorer.scoreFeaturesForContext(library, rawFile, fasta, baseName, massListPath, 0);
 			assertNotNull(partitionedFeatures);
 			
 			System.out.println(partitionedFeatures.size() + " features scored and partitioned.");

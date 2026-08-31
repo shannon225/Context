@@ -14,6 +14,7 @@ public class ContextFeatureScorerCLI {
 
 	private static final int DEFAULT_START_SEED = 1;
 	private static final int DEFAULT_END_SEED = 100;
+	private static final int DEFAULT_SHUFFLED_SEED = 2;
 
 	private static final Pattern MASKED_SEED_PATTERN = Pattern.compile("_masked([0-9]+)(?=_|\\.)",
 			Pattern.CASE_INSENSITIVE);
@@ -37,10 +38,12 @@ public class ContextFeatureScorerCLI {
 
 			File diaFolder = requireReadableDirectory("DIA folder", requireArgument(arguments, "--dia-folder"));
 
-			int startSeed = parseNonNegativeInteger(arguments.getOrDefault("--start-seed", Integer.toString(DEFAULT_START_SEED)), "-start-seed");
+			int startSeed = parseNonNegativeInteger(arguments.getOrDefault("--start-seed", Integer.toString(DEFAULT_START_SEED)), "--start-seed");
 
-			int endSeed = parseNonNegativeInteger(arguments.getOrDefault("--end-seed", Integer.toString(DEFAULT_END_SEED)), "-end-seed");
+			int endSeed = parseNonNegativeInteger(arguments.getOrDefault("--end-seed", Integer.toString(DEFAULT_END_SEED)), "--end-seed");
 
+			int shuffledSeed = parseNonNegativeInteger(arguments.getOrDefault("--shuffledSeed", Integer.toString(DEFAULT_SHUFFLED_SEED)), "--shuffled-seed");
+			
 			if (endSeed < startSeed) {
 				throw new IllegalArgumentException("--end-seed must be greater than or equal to --start-seed.");
 			}
@@ -59,7 +62,7 @@ public class ContextFeatureScorerCLI {
 				String baseName = RawFiles.baseName(input.diaFile);
 
 				try {
-					int featureCount = ContextFeatureScorer.scoreFeaturesForContext(library, input.diaFile, fasta, baseName, input.massListFile.getAbsolutePath()).size();
+					int featureCount = ContextFeatureScorer.scoreFeaturesForContext(library, input.diaFile, fasta, baseName, input.massListFile.getAbsolutePath(), shuffledSeed).size();
 
 					completed++;
 

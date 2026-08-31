@@ -89,7 +89,7 @@ public class ContextPercolatorExecutorTest {
 		PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(pyisopep);
 
 		ContextPercolatorResult result = ContextPercolatorExecutor.runContextPercolator(library, fasta, dia, massList,
-				pyIsoPEP, 0.01f, outputDirectory, "context-test", false, encyclopediaArguments);
+				pyIsoPEP, 0.01f, outputDirectory, "context-test", false, encyclopediaArguments, 0);
 
 		assertNotNull(result);
 		assertTrue("Native Percolator weights were not generated", result.getNativeWeightsFile().isFile());
