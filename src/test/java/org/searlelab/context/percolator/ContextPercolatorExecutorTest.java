@@ -54,8 +54,8 @@ public class ContextPercolatorExecutorTest {
 		HashMap<String, String> encyclopediaArguments = SearchParameterParser.getDefaultParameters();
 		PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(pyisopep);
 
-		PercolatorExecutionData run = ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, 0.01f,
-				outputDirectory, "standard-test", encyclopediaArguments);
+		PercolatorExecutionData run = ContextPercolatorExecutor.runPercolator(features, fasta, pyIsoPEP, 0.01f,
+				outputDirectory, "standard-test", encyclopediaArguments, null, null);
 
 		assertNotNull(run);
 		assertTrue("Native target-peptide report was not generated", run.getPeptideOutputFile().isFile());
@@ -89,7 +89,7 @@ public class ContextPercolatorExecutorTest {
 		PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(pyisopep);
 
 		ContextPercolatorResult result = ContextPercolatorExecutor.runContextPercolator(library, fasta, dia, massList,
-				pyIsoPEP, 0.01f, outputDirectory, "context-test", false, encyclopediaArguments);
+				pyIsoPEP, 0.01f, outputDirectory, "context-test", false, encyclopediaArguments, 0);
 
 		assertNotNull(result);
 		assertTrue("Native Percolator weights were not generated", result.getNativeWeightsFile().isFile());

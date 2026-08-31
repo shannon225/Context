@@ -3,7 +3,13 @@ package org.searlelab.context.io;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import org.searlelab.context.encyclopedia.MProphetReiter;
 import org.searlelab.context.percolator.ContextPercolator;
@@ -24,10 +30,10 @@ import edu.washington.gs.maccoss.encyclopedia.utils.math.LinearDiscriminantAnaly
  * Runs four confidence-estimation workflows on one matched feature-file set:
  *
  * <ol>
- *   <li>Context Percolator on the background and reference feature files</li>
- *   <li>standard Percolator on the complete feature file</li>
- *   <li>Context mProphet on the background and reference feature files</li>
- *   <li>standard mProphet on the complete feature file</li>
+ * <li>Context Percolator on the background and reference feature files</li>
+ * <li>standard Percolator on the complete feature file</li>
+ * <li>Context mProphet on the background and reference feature files</li>
+ * <li>standard mProphet on the complete feature file</li>
  * </ol>
  *
  * The complete, background, and reference files must have been produced from
@@ -38,11 +44,33 @@ public final class AllWorkflowExecutorCLI {
 
 	private static final String CONTEXT_MPROPHET_ENGINE_NAME = "context-mprophet";
 	private static final String STANDARD_MPROPHET_ENGINE_NAME = "standard-mprophet";
+	private static final String TARGET_MPROPHET_ENGINE_NAME = "target-mprophet";
+	private static final String CONTEXT_PERCOLATOR_ENGINE_NAME = "context-percolator";
+	private static final String STANDARD_PERCOLATOR_ENGINE_NAME = "standard-percolator";
+	private static final String TARGET_PERCOLATOR_ENGINE_NAME = "target-percolator";
+
 	private static final float DEFAULT_FDR = ContextPercolator.DEFAULT_FDR;
 	private static final int MPROPHET_SEED = 1;
 	private static final int MPROPHET_ROUND = 1;
 
-	private AllWorkflowExecutorCLI() {
+	private static final String COMPLETE_SUFFIX = ".features.txt";
+	private static final String BACKGROUND_SUFFIX = "_background.features.txt";
+	private static final String REFERENCE_SUFFIX = "_reference.features.txt";
+
+	private static final class FeatureFileSet {
+
+		private final String prefix;
+		private final File completeFeatures;
+		private final File backgroundFeatures;
+		private final File referenceFeatures;
+
+		private FeatureFileSet(String prefix, File completeFeatures, File backgroundFeatures, File referenceFeatures) {
+
+			this.prefix = prefix;
+			this.completeFeatures = completeFeatures;
+			this.backgroundFeatures = backgroundFeatures;
+			this.referenceFeatures = referenceFeatures;
+		}
 	}
 
 	public static void main(String[] args) {
@@ -54,21 +82,36 @@ public final class AllWorkflowExecutorCLI {
 		}
 
 		try {
-			File allFeatures = requiredReadableFile(arguments, "-features");
-			File backgroundFeatures = requiredReadableFile(arguments, "-background");
-			File referenceFeatures = requiredReadableFile(arguments, "-reference");
-			File fasta = requiredReadableFile(arguments, "-f");
 
-			float fdr = Float.parseFloat(
-					arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
-			File outputDirectory = DirectoryOptions.outputDirectory(
-					arguments, allFeatures.getAbsoluteFile().getParentFile());
-			String prefix = arguments.getOrDefault("-prefix", stripFeatureSuffix(allFeatures));
-			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("-pyisopep"));
+			boolean folderMode = arguments.containsKey("--features-folder");
+			boolean singleFileMode = arguments.containsKey("--features") || arguments.containsKey("--background")
+					|| arguments.containsKey("--reference");
+
+			if (folderMode && singleFileMode) {
+				throw new IllegalArgumentException(
+						"Use either --features-folder or the single-file options, not both.");
+			}
+
+			File fasta = requiredReadableFile(arguments, "-f");
+			float fdr = Float.parseFloat(arguments.getOrDefault("-fdr", Float.toString(DEFAULT_FDR)));
+			PyIsoPEPRunner pyIsoPEP = new PyIsoPEPRunner(arguments.get("--pyisopep"));
 			HashMap<String, String> encyclopediaArguments = encyclopediaArguments(arguments);
 
-			runAll(allFeatures, backgroundFeatures, referenceFeatures, fasta, pyIsoPEP,
-					fdr, outputDirectory, prefix, encyclopediaArguments);
+			if (folderMode) {
+				File featuresFolder = requiredReadableDirectory(arguments, "--features-folder");
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments,
+						featuresFolder.getAbsoluteFile().getParentFile());
+				runAllOnFolder(featuresFolder, fasta, pyIsoPEP, fdr, outputDirectory, encyclopediaArguments);
+			} else {
+				File allFeatures = requiredReadableFile(arguments, "--features");
+				File backgroundFeatures = requiredReadableFile(arguments, "--background");
+				File referenceFeatures = requiredReadableFile(arguments, "--reference");
+				File outputDirectory = DirectoryOptions.outputDirectory(arguments,
+						allFeatures.getAbsoluteFile().getParentFile());
+				String prefix = arguments.getOrDefault("--prefix", stripFeatureSuffix(allFeatures));
+				runAll(allFeatures, backgroundFeatures, referenceFeatures, fasta, pyIsoPEP, fdr, outputDirectory,
+						prefix, encyclopediaArguments);
+			}
 		} catch (Exception e) {
 			Logger.errorLine("Workflow execution failed: " + e.getMessage());
 			e.printStackTrace();
@@ -79,9 +122,8 @@ public final class AllWorkflowExecutorCLI {
 	/**
 	 * Programmatic entry point used by the CLI and suitable for integration tests.
 	 */
-	public static AllWorkflowResult runAll(File allFeatures, File backgroundFeatures,
-			File referenceFeatures, File fasta, PyIsoPEPRunner pyIsoPEP, float fdr,
-			File outputDirectory, String prefix,
+	public static AllWorkflowResult runAll(File allFeatures, File backgroundFeatures, File referenceFeatures,
+			File fasta, PyIsoPEPRunner pyIsoPEP, float fdr, File outputDirectory, String prefix,
 			HashMap<String, String> encyclopediaArguments) throws Exception {
 
 		requireReadableFile(allFeatures, "Complete feature file");
@@ -101,101 +143,147 @@ public final class AllWorkflowExecutorCLI {
 
 		HashMap<String, String> parameters = encyclopediaArguments == null
 				? SearchParameterParser.getDefaultParameters()
-						: new HashMap<>(encyclopediaArguments);
+				: new HashMap<>(encyclopediaArguments);
 
-		Logger.logLine("[1/4] Running Context Percolator");
-		ContextPercolatorResult contextPercolator = ContextPercolator.trainAndApply(
-				backgroundFeatures, referenceFeatures, fasta, parameters, pyIsoPEP,
-				fdr, outputDirectory, prefix);
+		Logger.logLine("[1/6] Running Context Percolator");
+		ContextPercolatorResult contextPercolator = ContextPercolator.trainAndApply(backgroundFeatures,
+				referenceFeatures, fasta, parameters, pyIsoPEP, fdr, outputDirectory, prefix);
 
-		Logger.logLine("[2/4] Running standard Percolator");
-		PercolatorExecutionData standardPercolator =
-				ContextPercolatorExecutor.runStandardPercolator(
-						allFeatures, fasta, pyIsoPEP, fdr, outputDirectory, prefix,
-						new HashMap<>(parameters));
+		Logger.logLine("[2/6] Running standard discovery Percolator");
 
 		SearchParameters searchParameters = parseSearchParameters(parameters, fdr);
 
-		Logger.logLine("[3/4] Running Context mProphet");
-		MProphetResult contextMProphet = runContextMProphet(
-				backgroundFeatures, referenceFeatures, fasta, searchParameters,
-				fdr, outputDirectory, prefix);
+		PercolatorExecutionData standardPercolator = ContextPercolatorExecutor.runStandardPercolator(allFeatures, fasta,
+				pyIsoPEP, fdr, outputDirectory, prefix, new HashMap<>(parameters), STANDARD_PERCOLATOR_ENGINE_NAME,
+				"standard");
 
-		Logger.logLine("[4/4] Running standard mProphet");
-		MProphetResult standardMProphet = runStandardMProphet(
-				allFeatures, fasta, searchParameters, fdr, outputDirectory, prefix);
+		Logger.logLine("[3/6] Running targeted Percolator");
 
-		Logger.logLine("Finished all four workflows. Results are under "
-				+ outputDirectory.getAbsolutePath());
+		PercolatorExecutionData targetPercolator = ContextPercolatorExecutor.runTargetPercolator(referenceFeatures,
+				fasta, pyIsoPEP, fdr, outputDirectory, prefix, new HashMap<>(parameters), TARGET_PERCOLATOR_ENGINE_NAME,
+				"targeted");
 
-		return new AllWorkflowResult(
-				contextPercolator, standardPercolator, contextMProphet, standardMProphet);
+		Logger.logLine("[4/6] Running Context mProphet");
+		MProphetResult contextMProphet = runContextMProphet(backgroundFeatures, referenceFeatures, fasta,
+				searchParameters, fdr, outputDirectory, prefix);
+
+		Logger.logLine("[5/6] Running standard discovery mProphet");
+		MProphetResult standardMProphet = runStandardMProphet(allFeatures, fasta, searchParameters, fdr,
+				outputDirectory, prefix);
+
+		Logger.logLine("[6/6] Running targeted mProphet");
+		MProphetResult targetMProphet = runTargetMProphet(referenceFeatures, fasta, searchParameters, fdr,
+				outputDirectory, prefix);
+
+		Logger.logLine("Finished all workflows. Results are under " + outputDirectory.getAbsolutePath());
+
+		return new AllWorkflowResult(contextPercolator, standardPercolator, targetPercolator, contextMProphet,
+				standardMProphet, targetMProphet);
 	}
 
-	private static MProphetResult runContextMProphet(File backgroundFeatures,
-			File referenceFeatures, File fasta, SearchParameters parameters, float fdr,
-			File outputDirectory, String prefix) throws Exception {
+	public static Map<String, AllWorkflowResult> runAllOnFolder(File folder, File fasta, PyIsoPEPRunner pyIsoPEP,
+			float fdr, File outputDirectory, HashMap<String, String> encyclopediaArguments) throws Exception {
 
-		File engineDirectory = DirectoryOptions.engineDirectory(
-				outputDirectory, CONTEXT_MPROPHET_ENGINE_NAME);
+		requireReadableFile(fasta, "FASTA file");
+		File featureFolder = requireReadableDirectory(folder, "Folder containing features");
 
-		MProphetExecutionData backgroundData = new MProphetExecutionData(
-				backgroundFeatures,
-				fasta,
+		if (!(fdr > 0.0f && fdr <= 1.0f)) {
+			throw new IllegalArgumentException("FDR must be greater than 0 and at most 1.");
+		}
+
+		if (outputDirectory == null) {
+			throw new IllegalArgumentException("Output directory must not be null.");
+		}
+
+		ArrayList<FeatureFileSet> featureSets = findFeatureFileSets(featureFolder);
+
+		Logger.logLine("Found " + featureSets.size() + " matched feature-file sets.");
+		Map<String, AllWorkflowResult> results = new HashMap<>();
+
+		int index = 0;
+
+		for (FeatureFileSet featureSet : featureSets) {
+			index++;
+
+			Logger.logLine("[" + index + "/" + featureSets.size() + "] Processing " + featureSet.prefix);
+			AllWorkflowResult result = runAll(featureSet.completeFeatures, featureSet.backgroundFeatures,
+					featureSet.referenceFeatures, fasta, pyIsoPEP, fdr, outputDirectory, featureSet.prefix,
+					encyclopediaArguments);
+
+			results.put(featureSet.prefix, result);
+
+			Logger.logLine("Finished " + results.size() + " matched feature-file sets. Results are under "
+					+ outputDirectory.getAbsolutePath());
+
+		}
+		return results;
+
+	}
+
+	private static MProphetResult runContextMProphet(File backgroundFeatures, File referenceFeatures, File fasta,
+			SearchParameters parameters, float fdr, File outputDirectory, String prefix) throws Exception {
+
+		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, CONTEXT_MPROPHET_ENGINE_NAME);
+
+		MProphetExecutionData backgroundData = new MProphetExecutionData(backgroundFeatures, fasta,
 				new File(engineDirectory, prefix + ".peptide.background.target.txt"),
-				new File(engineDirectory, prefix + ".peptide.background.decoy.txt"),
-				parameters);
+				new File(engineDirectory, prefix + ".peptide.background.decoy.txt"), parameters);
 
-		MProphetExecutionData referenceData = new MProphetExecutionData(
-				referenceFeatures,
-				fasta,
+		MProphetExecutionData referenceData = new MProphetExecutionData(referenceFeatures, fasta,
 				new File(engineDirectory, prefix + ".peptide.reference.target.txt"),
-				new File(engineDirectory, prefix + ".peptide.reference.decoy.txt"),
-				parameters);
+				new File(engineDirectory, prefix + ".peptide.reference.decoy.txt"), parameters);
 
 		deleteMProphetOutputs(backgroundData);
 		deleteMProphetOutputs(referenceData);
 
-		MProphetResult backgroundResult = MProphetReiter.executeMProphetTSV(
-				backgroundData, fdr, MPROPHET_SEED, parameters.getAAConstants(),
-				MPROPHET_ROUND);
+		MProphetResult backgroundResult = MProphetReiter.executeMProphetTSV(backgroundData, fdr, MPROPHET_SEED,
+				parameters.getAAConstants(), MPROPHET_ROUND);
 		LinearDiscriminantAnalysis backgroundModel = backgroundResult.getLDA();
 
-		MProphetResult referenceResult = MProphetReiter.executeMProphetTSVWithModel(
-				referenceData, fdr, backgroundModel, parameters.getAAConstants());
+		MProphetResult referenceResult = MProphetReiter.executeMProphetTSVWithModel(referenceData, fdr, backgroundModel,
+				parameters.getAAConstants());
 
-		Logger.logLine("Context mProphet found "
-				+ referenceResult.getPassingPeptides().size()
+		Logger.logLine("Context mProphet found " + referenceResult.getPassingPeptides().size()
 				+ " reference peptides at " + (fdr * 100.0f) + "% FDR");
 		return referenceResult;
 	}
 
-	private static MProphetResult runStandardMProphet(File allFeatures, File fasta,
-			SearchParameters parameters, float fdr, File outputDirectory, String prefix)
-					throws Exception {
+	private static MProphetResult runStandardMProphet(File allFeatures, File fasta, SearchParameters parameters,
+			float fdr, File outputDirectory, String prefix) throws Exception {
 
-		File engineDirectory = DirectoryOptions.engineDirectory(
-				outputDirectory, STANDARD_MPROPHET_ENGINE_NAME);
-		MProphetExecutionData data = new MProphetExecutionData(
-				allFeatures,
-				fasta,
+		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, STANDARD_MPROPHET_ENGINE_NAME);
+		MProphetExecutionData data = new MProphetExecutionData(allFeatures, fasta,
 				new File(engineDirectory, prefix + ".peptide.target.txt"),
-				new File(engineDirectory, prefix + ".peptide.decoy.txt"),
-				parameters);
+				new File(engineDirectory, prefix + ".peptide.decoy.txt"), parameters);
 
 		deleteMProphetOutputs(data);
-		MProphetResult result = MProphetReiter.executeMProphetTSV(
-				data, fdr, MPROPHET_SEED, parameters.getAAConstants(), MPROPHET_ROUND);
+		MProphetResult result = MProphetReiter.executeMProphetTSV(data, fdr, MPROPHET_SEED, parameters.getAAConstants(),
+				MPROPHET_ROUND);
 
-		Logger.logLine("Standard mProphet found " + result.getPassingPeptides().size()
-				+ " peptides at " + (fdr * 100.0f) + "% FDR");
+		Logger.logLine("Standard mProphet found " + result.getPassingPeptides().size() + " peptides at "
+				+ (fdr * 100.0f) + "% FDR");
 		return result;
 	}
 
-	private static SearchParameters parseSearchParameters(
-			HashMap<String, String> encyclopediaArguments, float fdr) {
-		HashMap<String, String> parameterMap =
-				SearchParameterParser.getDefaultParametersObject().toParameterMap();
+	private static MProphetResult runTargetMProphet(File allFeatures, File fasta, SearchParameters parameters,
+			float fdr, File outputDirectory, String prefix) throws Exception {
+
+		File engineDirectory = DirectoryOptions.engineDirectory(outputDirectory, TARGET_MPROPHET_ENGINE_NAME);
+		MProphetExecutionData data = new MProphetExecutionData(allFeatures, fasta,
+				new File(engineDirectory, prefix + ".peptide.target.txt"),
+				new File(engineDirectory, prefix + ".peptide.decoy.txt"), parameters);
+
+		deleteMProphetOutputs(data);
+		MProphetResult result = MProphetReiter.executeMProphetTSV(data, fdr, MPROPHET_SEED, parameters.getAAConstants(),
+				MPROPHET_ROUND);
+
+		Logger.logLine("Standard mProphet found " + result.getPassingPeptides().size() + " peptides at "
+				+ (fdr * 100.0f) + "% FDR");
+		return result;
+	}
+
+	private static SearchParameters parseSearchParameters(HashMap<String, String> encyclopediaArguments, float fdr) {
+		HashMap<String, String> parameterMap = SearchParameterParser.getDefaultParametersObject().toParameterMap();
 		parameterMap.putAll(encyclopediaArguments);
 		parameterMap.put("-percolatorThreshold", Float.toString(fdr));
 		return SearchParameterParser.parseParameters(parameterMap);
@@ -206,23 +294,7 @@ public final class AllWorkflowExecutorCLI {
 		Files.deleteIfExists(data.getPeptideDecoyFile().toPath());
 	}
 
-	private static HashMap<String, String> encyclopediaArguments(
-			HashMap<String, String> arguments) {
-		HashMap<String, String> parameters = SearchParameterParser.getDefaultParameters();
-		HashMap<String, String> remaining = new HashMap<>(arguments);
-
-		for (String workflowFlag : new String[] {
-				"-features", "-background", "-reference", "-f", "-fdr", "-o",
-				"-outdir", "-prefix", "-pyisopep", "-h", "-help", "--help" }) {
-			remaining.remove(workflowFlag);
-		}
-
-		parameters.putAll(remaining);
-		return parameters;
-	}
-
-	private static File requiredReadableFile(HashMap<String, String> arguments,
-			String flag) throws IOException {
+	private static File requiredReadableFile(HashMap<String, String> arguments, String flag) throws IOException {
 		String value = arguments.get(flag);
 		if (value == null || value.trim().isEmpty()) {
 			throw new IllegalArgumentException("Missing required argument: " + flag);
@@ -233,21 +305,113 @@ public final class AllWorkflowExecutorCLI {
 		return file;
 	}
 
-	private static void requireReadableFile(File file, String description)
-			throws IOException {
+	private static void requireReadableFile(File file, String description) throws IOException {
 		if (file == null || !file.isFile() || !file.canRead()) {
-			throw new IOException(description + " is not a readable file: "
-					+ (file == null ? "null" : file.getAbsolutePath()));
+			throw new IOException(
+					description + " is not a readable file: " + (file == null ? "null" : file.getAbsolutePath()));
 		}
 	}
 
+	private static File requireReadableDirectory(File directory, String description) throws IOException {
+
+		if (directory == null || !directory.isDirectory() || !directory.canRead()) {
+			throw new IOException(description + " is not a readable directory: "
+					+ (directory == null ? "null" : directory.getAbsolutePath()));
+		}
+
+		return directory;
+	}
+
+	private static File requiredReadableDirectory(HashMap<String, String> arguments, String flag) throws IOException {
+
+		String value = arguments.get(flag);
+
+		if (value == null || value.trim().isEmpty()) {
+			throw new IllegalArgumentException("Missing required argument: " + flag);
+		}
+
+		File directory = new File(value);
+
+		return requireReadableDirectory(directory, flag);
+	}
+
 	private static boolean containsHelpFlag(HashMap<String, String> arguments) {
-		return arguments.containsKey("-h") || arguments.containsKey("-help")
-				|| arguments.containsKey("--help");
+		return arguments.containsKey("-h") || arguments.containsKey("-help") || arguments.containsKey("--help");
 	}
 
 	private static String stripFeatureSuffix(File featureFile) {
 		return featureFile.getName().replaceFirst("\\.features\\.txt$", "");
+	}
+
+	private static boolean isCompleteFeatureFile(Path path) {
+		String name = path.getFileName().toString();
+
+		return name.endsWith(COMPLETE_SUFFIX) && !name.endsWith(BACKGROUND_SUFFIX) && !name.endsWith(REFERENCE_SUFFIX);
+	}
+
+	private static ArrayList<FeatureFileSet> findFeatureFileSets(File folder) throws IOException {
+
+		List<Path> completeFiles = new ArrayList<>();
+
+		try (Stream<java.nio.file.Path> paths = Files.list(folder.toPath())) {
+			paths.filter(Files::isRegularFile).filter(path -> isCompleteFeatureFile(path))
+					.sorted(Comparator.comparing(path -> path.getFileName().toString())).forEach(completeFiles::add);
+		}
+
+		if (completeFiles.isEmpty()) {
+			throw new IOException("No complete *.features.txt files were found in " + folder.getAbsolutePath());
+		}
+
+		ArrayList<FeatureFileSet> featureSets = new ArrayList<>();
+		ArrayList<String> missingFiles = new ArrayList<>();
+
+		for (Path completePath : completeFiles) {
+			File completeFile = completePath.toFile();
+			String completeName = completeFile.getName();
+
+			String prefix = completeName.substring(0, completeName.length() - COMPLETE_SUFFIX.length());
+
+			File backgroundFile = new File(folder, prefix + BACKGROUND_SUFFIX);
+
+			File referenceFile = new File(folder, prefix + REFERENCE_SUFFIX);
+
+			if (!backgroundFile.isFile() || !backgroundFile.canRead()) {
+				missingFiles.add(backgroundFile.getName());
+			}
+
+			if (!referenceFile.isFile() || !referenceFile.canRead()) {
+				missingFiles.add(referenceFile.getName());
+			}
+
+			if (backgroundFile.isFile() && backgroundFile.canRead() && referenceFile.isFile()
+					&& referenceFile.canRead()) {
+
+				featureSets.add(new FeatureFileSet(prefix, completeFile, backgroundFile, referenceFile));
+			}
+
+		}
+
+		if (!missingFiles.isEmpty()) {
+			throw new IOException("The following required feature files are missing or unreadable: "
+					+ String.join(", ", missingFiles));
+		}
+
+		return featureSets;
+	}
+
+	private static HashMap<String, String> encyclopediaArguments(HashMap<String, String> arguments) {
+
+		HashMap<String, String> parameters = SearchParameterParser.getDefaultParameters();
+
+		HashMap<String, String> remaining = new HashMap<>(arguments);
+
+		for (String workflowFlag : new String[] { "--features-folder", "--features", "--background", "--reference",
+				"-f", "-fdr", "-o", "--outdir", "--prefix", "--pyisopep", "-h", "-help", "--help" }) {
+			remaining.remove(workflowFlag);
+		}
+
+		parameters.putAll(remaining);
+		return parameters;
 	}
 
 	private static void printHelp() {
@@ -256,55 +420,26 @@ public final class AllWorkflowExecutorCLI {
 		Logger.timelessLogLine("and standard mProphet on one matched feature-file set.");
 		Logger.timelessLogLine("");
 		Logger.timelessLogLine("Required:");
-		Logger.timelessLogLine("  -features   <file> complete, unsplit feature TSV");
-		Logger.timelessLogLine("  -background <file> background feature TSV from the same experiment");
-		Logger.timelessLogLine("  -reference  <file> reference feature TSV from the same experiment");
+		Logger.timelessLogLine("  --features   <file> complete, unsplit feature TSV");
+		Logger.timelessLogLine("  --background <file> background feature TSV from the same experiment");
+		Logger.timelessLogLine("  --reference  <file> reference feature TSV from the same experiment");
 		Logger.timelessLogLine("  -f          <file> FASTA protein database");
 		Logger.timelessLogLine("");
 		Logger.timelessLogLine("Optional:");
 		Logger.timelessLogLine("  -fdr      <float> peptide FDR threshold (default: " + DEFAULT_FDR + ")");
 		Logger.timelessLogLine("  -o        <dir>   output root (default: next to -features)");
-		Logger.timelessLogLine("  -prefix   <name>  output filename prefix");
-		Logger.timelessLogLine("  -pyisopep <path>  pyIsoPEP executable (default: PATH)");
+		Logger.timelessLogLine("  --prefix   <name>  output filename prefix");
+		Logger.timelessLogLine("  --pyisopep <path>  pyIsoPEP executable (default: PATH)");
 		Logger.timelessLogLine("");
 		Logger.timelessLogLine("Other flags are passed through to EncyclopeDIA parameters.");
 		Logger.timelessLogLine("");
 		Logger.timelessLogLine("Output directories:");
-		Logger.timelessLogLine("  <o>/" + ContextPercolator.ENGINE_NAME);
-		Logger.timelessLogLine("  <o>/standard-percolator");
+		Logger.timelessLogLine("  <o>/" + CONTEXT_PERCOLATOR_ENGINE_NAME);
+		Logger.timelessLogLine("  <o>/" + STANDARD_PERCOLATOR_ENGINE_NAME);
+		Logger.timelessLogLine("  <o>/" + TARGET_PERCOLATOR_ENGINE_NAME);
 		Logger.timelessLogLine("  <o>/" + CONTEXT_MPROPHET_ENGINE_NAME);
 		Logger.timelessLogLine("  <o>/" + STANDARD_MPROPHET_ENGINE_NAME);
-	}
+		Logger.timelessLogLine("  <o>/" + TARGET_MPROPHET_ENGINE_NAME);
 
-	public static final class AllWorkflowResult {
-		private final ContextPercolatorResult contextPercolator;
-		private final PercolatorExecutionData standardPercolator;
-		private final MProphetResult contextMProphet;
-		private final MProphetResult standardMProphet;
-
-		private AllWorkflowResult(ContextPercolatorResult contextPercolator,
-				PercolatorExecutionData standardPercolator,
-				MProphetResult contextMProphet, MProphetResult standardMProphet) {
-			this.contextPercolator = contextPercolator;
-			this.standardPercolator = standardPercolator;
-			this.contextMProphet = contextMProphet;
-			this.standardMProphet = standardMProphet;
-		}
-
-		public ContextPercolatorResult getContextPercolator() {
-			return contextPercolator;
-		}
-
-		public PercolatorExecutionData getStandardPercolator() {
-			return standardPercolator;
-		}
-
-		public MProphetResult getContextMProphet() {
-			return contextMProphet;
-		}
-
-		public MProphetResult getStandardMProphet() {
-			return standardMProphet;
-		}
 	}
 }

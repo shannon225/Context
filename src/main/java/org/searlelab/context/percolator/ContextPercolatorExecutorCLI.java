@@ -37,7 +37,7 @@ public class ContextPercolatorExecutorCLI {
 				String prefix = arguments.getOrDefault("-prefix", stripFeatureSuffix(features));
 				
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
-				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs);
+				ContextPercolatorExecutor.runStandardPercolator(features, fasta, pyIsoPEP, fdr, outputDirectory, prefix, encyclopediaArgs, prefix, "standard");
 				return;
 			}
 			
@@ -67,7 +67,7 @@ public class ContextPercolatorExecutorCLI {
 				HashMap<String, String> encyclopediaArgs = encyclopediaArguments(arguments);
 
 				ContextPercolatorExecutor.runContextPercolator(library, fasta, dia, massList, pyIsoPEP, fdr, outputDirectory, prefix, generateDecoys,
-						encyclopediaArgs);
+						encyclopediaArgs, 0);
 			}
 		} catch (Exception e) {
 			Logger.errorLine("ContextPercolatorExecutor failed: " + e.getMessage());

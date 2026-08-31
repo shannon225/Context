@@ -28,7 +28,7 @@ public class Context {
 //				ContextMProphetExecutor.main(remaining);
 			break;
 		case "features":
-			ContextFeatureScorer.main(remaining);
+			ContextFeatureScorer.execute(remaining);
 			break;
 		case "features-folder":
 			ContextFeatureScorerCLI.main(remaining);

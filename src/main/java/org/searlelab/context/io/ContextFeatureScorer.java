@@ -19,6 +19,7 @@ import edu.washington.gs.maccoss.encyclopedia.datastructures.SearchParameters;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.BlibToLibraryConverter;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.LibraryInterface;
 import edu.washington.gs.maccoss.encyclopedia.filereaders.SearchParameterParser;
+import edu.washington.gs.maccoss.encyclopedia.utils.Logger;
 import edu.washington.gs.maccoss.encyclopedia.utils.massspec.PeptideUtils;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.EmptyProgressIndicator;
 import edu.washington.gs.maccoss.encyclopedia.utils.threading.ProgressIndicator;
@@ -27,15 +28,16 @@ import edu.washington.gs.maccoss.encyclopedia.algorithms.percolator.PercolatorPe
 import org.searlelab.context.datastructures.IsolationWindow;
 import org.searlelab.context.datastructures.ScoredFeature;
 import org.searlelab.context.encyclopedia.EncyclopediaTwo;
+import org.searlelab.msrawjava.Main.CliArguments;
 
 public class ContextFeatureScorer {
 
-	public static void main(String[] args) throws IOException, SQLException, InterruptedException, DataFormatException {
+	public static void execute(String[] args) throws IOException, SQLException, InterruptedException, DataFormatException {
 
 		if (args.length != 4) {
 			System.err.println("Usage: ");
-			System.err.println("java org.searlelab.context.mprophet.ContextFeatureScorer " +
-					"<rawFilePath> <libraryFilePath> <fastaPath> <massListPath>");
+			System.err.println("java org.searlelab.context.mprophet.ContextFeatureScorer "
+					+ "<rawFilePath> <libraryFilePath> <fastaPath> <massListPath>");
 			System.err.println("rawFilePath accepts " + RawFiles.supportedExtensions());
 			System.exit(1);
 		}
@@ -44,41 +46,66 @@ public class ContextFeatureScorer {
 		String libraryFilePath = args[1];
 		String fastaPath = args[2];
 		String massListPath = args[3];
-
+		String seedForDecoys = args[7];
+		
 		String baseName = RawFiles.stripExtension(rawFilePath);
 		final File fasta = new File(fastaPath);
 		File rawFile = new File(rawFilePath);
 		File library = new File(libraryFilePath);
+		int shuffledSeed = Integer.parseInt(seedForDecoys);
+		
 
 		try {
-			ArrayList<ScoredFeature> partitionedFeatures = scoreFeaturesForContext(library, rawFile, fasta, baseName, massListPath);
-			System.out.println("Scored and partitioned " + partitionedFeatures.size() + " features.");
+			ArrayList<ScoredFeature> partitionedFeatures = scoreFeaturesForContext(library, rawFile, fasta, baseName,
+					massListPath, shuffledSeed);
+			
+			Logger.logLine("Scored and partitioned " + partitionedFeatures.size() + " features.");
 		} catch (Exception e) {
-			System.out.println("Something did not work... see the error tace");
+			Logger.logLine("Something did not work... see the error tace");
 			e.printStackTrace();
 		} finally {
-		System.out.println("Program concluded.");
+			Logger.logLine("Program concluded.");
 		}
-		}
+	}
 
-	static IsolationWindow findMatchingMassListWindow(ScoredFeature feature, ArrayList<IsolationWindow> targetWindows, SearchParameters parameters) {
+	static IsolationWindow findMatchingMassListWindow(ScoredFeature feature, ArrayList<IsolationWindow> targetWindows,
+			SearchParameters parameters) {
+
 		String sequence = cleanPeptideSequence(feature.getSequence());
 
+		// Use decoys that are in the assay as entrapment decoys
 		for (IsolationWindow window : targetWindows) {
 			String compound = cleanPeptideSequence(window.getCompound());
-			
+
+			if (compound.equals(sequence)) {
+				return window;
+			}
+		}
+
+		// Support entrapment decoys
+		for (IsolationWindow window : targetWindows) {
+			String compound = cleanPeptideSequence(window.getCompound());
 			String encyclopediaDecoy = PeptideUtils.reverse(compound, parameters.getAAConstants());
 
-		        if (compound.equals(sequence)
-		                || encyclopediaDecoy.equals(sequence)) {
-		            return window;
-		        }
+			if (encyclopediaDecoy.equals(sequence)) {
+				return window;
+			}
 		}
 		return null;
 	}
 
+	private static File prepareMassList(String massListPath, String baseName, int shuffledSeed) throws IOException {
+		File inputMassList = new File(massListPath);
+
+		File outputPrefix = new File(baseName).getAbsoluteFile();
+		File outputDirectory = outputPrefix.getParentFile();
+
+		return MassListDecoyGenerator.checkIfDecoysArePresent(inputMassList, outputDirectory, 0);
+	}
+
 	private static String cleanPeptideSequence(String sequence) {
-		if (sequence == null) return "";
+		if (sequence == null)
+			return "";
 
 		return sequence.trim().replaceFirst("^[A-Za-z-]?\\.", "").replaceFirst("\\.[A-Za-z-]?$", "");
 	}
@@ -104,21 +131,27 @@ public class ContextFeatureScorer {
 		}
 		throw new IllegalArgumentException("Required column was not found in the feature file: " + columnName);
 	}
-	
-	// Changed isFeatureOnMassList to only check for peptide sequence equivalence, not for mass, charge and RT equivalence. I don't think is needed, but keeping for now. 
+
+	// Changed isFeatureOnMassList to only check for peptide sequence equivalence,
+	// not for mass, charge and RT equivalence. I don't think is needed, but keeping
+	// for now.
 
 	@SuppressWarnings("unused")
-	public static ArrayList<ScoredFeature> scoreFeaturesForContext(File library, File rawFile, File fasta, String baseName,
-			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
+	public static ArrayList<ScoredFeature> scoreFeaturesForContext(File library, File rawFile, File fasta,
+			String baseName, String massListPath, int shuffledSeed)
+					throws IOException, SQLException, DataFormatException, InterruptedException {
+
+		File effectiveMassList = prepareMassList(massListPath, baseName, shuffledSeed);
 
 		// Run an Encyclopedia job
 		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
 		LibraryScoringFactory scoringForLibrary = EncyclopediaScoringFactory.getDefaultScoringFactory(params);
 		LibraryInterface interfaceForLibrary = BlibToLibraryConverter.getFile(library, fasta, params);
-		
+
 		File outputPrefix = new File(baseName);
-		
-		EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(rawFile, fasta, interfaceForLibrary, interfaceForLibrary, outputPrefix, scoringForLibrary);
+
+		EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(rawFile, fasta, interfaceForLibrary,
+				interfaceForLibrary, outputPrefix, scoringForLibrary);
 
 		ProgressIndicator progress = new EmptyProgressIndicator(true);
 		org.searlelab.msrawjava.io.StripeFileInterface interfaceForStripeFile = job.getDiaFileReader();
@@ -127,12 +160,12 @@ public class ContextFeatureScorer {
 		File featuresToSplit = job.getPercolatorFiles().getInputTSV();
 
 		if (featuresToSplit.exists() && featuresToSplit.canRead()) {
-			System.out.println("Feature file already exists, skipping feature calculation!");
-			System.out.println(featuresToSplit.getAbsolutePath());
+			Logger.logLine("Feature file already exists, skipping feature calculation!");
+			Logger.logLine(featuresToSplit.getAbsolutePath());
 		} else {
-			System.out.println("Calculating features...");
-			EncyclopediaTwo.generateFeatureFile(progress, interfaceForLibrary, job,
-					interfaceForStripeFile, java.util.Optional.empty());
+			Logger.logLine("Calculating features...");
+			EncyclopediaTwo.generateFeatureFile(progress, interfaceForLibrary, job, interfaceForStripeFile,
+					java.util.Optional.empty());
 		}
 
 		ArrayList<ScoredFeature> uniqueFeatures = new ArrayList<>();
@@ -146,9 +179,9 @@ public class ContextFeatureScorer {
 			if (header == null) {
 				throw new IOException("Feature file is empty, so no file could be read.");
 			}
-			
+
 			String[] headerColumns = header.split("\t", -1);
-			
+
 			int precursorMzIndex = findColumnIndex(headerColumns, "precursorMz");
 			int isDecoyIndex = findColumnIndex(headerColumns, "Label");
 			int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
@@ -156,7 +189,7 @@ public class ContextFeatureScorer {
 			int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
 			int sequenceIndex = findColumnIndex(headerColumns, "sequence");
 			int proteinIndex = findColumnIndex(headerColumns, "Proteins");
-			
+
 			String line;
 			while ((line = br.readLine()) != null) {
 				String columns[] = line.split("\t", -1);
@@ -169,7 +202,8 @@ public class ContextFeatureScorer {
 				String sequence = columns[sequenceIndex];
 				String protein = columns[proteinIndex];
 
-				ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence, protein, line);
+				ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence,
+						protein, line);
 
 				uniqueFeaturesList.add(feature);
 
@@ -181,11 +215,11 @@ public class ContextFeatureScorer {
 				}
 			}
 		}
+		
 		ArrayList<ScoredFeature> bestFeatures = new ArrayList<>(bestFeatureByPeptide.values());
 		bestFeatures.sort(Comparator.comparing(ScoredFeature::getPrimary).reversed());
 
-		System.out.println("Selecting the betst feature per peptide..." + bestFeatures.size() + " peptides remain.");
-
+		Logger.logLine("Selecting the betst feature per peptide..." + bestFeatures.size() + " peptides remain.");
 
 		// Output Paths
 		String referenceOutputPath = baseName + "_reference.features.txt";
@@ -196,7 +230,9 @@ public class ContextFeatureScorer {
 		File backgroundOutput = new File(backgroundOutputPath);
 
 		// Target mass list
-		ArrayList<IsolationWindow> targetWindows = IsolationWindowReader.parseMassList(massListPath);
+		ArrayList<IsolationWindow> targetWindows = IsolationWindowReader
+				.parseMassList(effectiveMassList.getAbsolutePath());
+
 		System.out.println(targetWindows.size() + " windows found in the mass list");
 
 		ArrayList<ScoredFeature> referenceFeatures = new ArrayList<>();
@@ -210,11 +246,13 @@ public class ContextFeatureScorer {
 			boolean isOnMassList = matchingWindow != null;
 			boolean isBackground = !isOnMassList;
 
-			ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(), feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(), feature.getOriginalLine(), isBackground);
+			ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(),
+					feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(),
+					feature.getOriginalLine(), isBackground);
 			partitionedFeatures.add(annotatedFeature);
 
 			if (isOnMassList) {
-				referenceFeatures.add(feature); 
+				referenceFeatures.add(feature);
 			} else {
 				backgroundFeatures.add(feature);
 			}
@@ -222,100 +260,104 @@ public class ContextFeatureScorer {
 		writeScoredFeatures(referenceOutput, referenceFeatures, header);
 		writeScoredFeatures(backgroundOutput, backgroundFeatures, header);
 
-		System.out.println("Reference target features: " + referenceFeatures.size());
+		Logger.logLine("Reference target features: " + referenceFeatures.size());
 		return partitionedFeatures;
 	}
-	
+
 	// Scores features from a global experiment
-	public static ArrayList<ScoredFeature> scoreFeatures(File library, File rawFile, File fasta, String baseName,
+	public static ArrayList<ScoredFeature> scoreFeatures(int shuffledSeed, File library, File rawFile, File fasta, String baseName,
 			String massListPath) throws IOException, SQLException, DataFormatException, InterruptedException {
-		
+
 		// Run an Encyclopedia job
-				SearchParameters params = SearchParameterParser.getDefaultParametersObject();
-				LibraryScoringFactory scoringForLibrary = EncyclopediaScoringFactory.getDefaultScoringFactory(params);
-				LibraryInterface interfaceForLibrary = BlibToLibraryConverter.getFile(library, fasta, params);
-				
-				File outputPrefix = new File(baseName);
-				
-				EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(rawFile, fasta, interfaceForLibrary, interfaceForLibrary, outputPrefix, scoringForLibrary);
+		SearchParameters params = SearchParameterParser.getDefaultParametersObject();
+		LibraryScoringFactory scoringForLibrary = EncyclopediaScoringFactory.getDefaultScoringFactory(params);
+		LibraryInterface interfaceForLibrary = BlibToLibraryConverter.getFile(library, fasta, params);
 
-				ProgressIndicator progress = new EmptyProgressIndicator(true);
-				org.searlelab.msrawjava.io.StripeFileInterface interfaceForStripeFile = job.getDiaFileReader();
+		File outputPrefix = new File(baseName);
 
-				// Run Encyclopedia job to get the feature file
-				File featuresToSplit = job.getPercolatorFiles().getInputTSV();
+		EncyclopediaTwoJobData job = new EncyclopediaTwoJobData(rawFile, fasta, interfaceForLibrary,
+				interfaceForLibrary, outputPrefix, scoringForLibrary);
 
-				if (featuresToSplit.exists() && featuresToSplit.canRead()) {
-					System.out.println("Feature file already exists, skipping feature calculation!");
-					System.out.println(featuresToSplit.getAbsolutePath());
-				} else {
-					System.out.println("Calculating features...");
-					EncyclopediaTwo.generateFeatureFile(progress, interfaceForLibrary, job,
-							interfaceForStripeFile, java.util.Optional.empty());
-				}
+		ProgressIndicator progress = new EmptyProgressIndicator(true);
+		org.searlelab.msrawjava.io.StripeFileInterface interfaceForStripeFile = job.getDiaFileReader();
 
-				String header;
-				ArrayList<ScoredFeature> allFeatures = new ArrayList<>();
+		// Run Encyclopedia job to get the feature file
+		File featuresToSplit = job.getPercolatorFiles().getInputTSV();
 
-				// Read all rows the feature file
-				try (BufferedReader br = new BufferedReader(new FileReader(featuresToSplit))) {
-					header = br.readLine();
-					if (header == null) {
-						throw new IOException("Feature file is empty, so no file could be read.");
-					}
-					
-					String[] headerColumns = header.split("\t", -1);
-					
-					int precursorMzIndex = findColumnIndex(headerColumns, "precursorMz");
-					int isDecoyIndex = findColumnIndex(headerColumns, "Label");
-					int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
-					int primaryScoreIndex = findColumnIndex(headerColumns, "primary");
-					@SuppressWarnings("unused")
-					int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
-					int sequenceIndex = findColumnIndex(headerColumns, "sequence");
-					int proteinIndex = findColumnIndex(headerColumns, "Proteins");
-					
-					String line;
-					while ((line = br.readLine()) != null) {
-						String columns[] = line.split("\t", -1);
+		if (featuresToSplit.exists() && featuresToSplit.canRead()) {
+			Logger.logLine("Feature file already exists, skipping feature calculation!");
+			Logger.logLine(featuresToSplit.getAbsolutePath());
+		} else {
+			Logger.logLine("Calculating features...");
+			EncyclopediaTwo.generateFeatureFile(progress, interfaceForLibrary, job, interfaceForStripeFile,
+					java.util.Optional.empty());
+		}
 
-						double mz = Double.parseDouble(columns[precursorMzIndex]);
-						byte featureCharge = PercolatorPeptide.getCharge(columns[0]);
-						boolean isDecoy = Integer.parseInt(columns[isDecoyIndex]) == -1;
-						float primary = Float.parseFloat(columns[primaryScoreIndex]);
-						float retentionTime = Float.parseFloat(columns[retentionTimeIndex]);
-						String sequence = columns[sequenceIndex];
-						String protein = columns[proteinIndex];
+		String header;
+		ArrayList<ScoredFeature> allFeatures = new ArrayList<>();
 
-						ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence, protein, line);
-						allFeatures.add(feature);
+		// Read all rows the feature file
+		try (BufferedReader br = new BufferedReader(new FileReader(featuresToSplit))) {
+			header = br.readLine();
+			if (header == null) {
+				throw new IOException("Feature file is empty, so no file could be read.");
+			}
 
-					}
-				}
-				
-				// Output Paths
-				String featureOutputPath = baseName + ".features.txt";
+			String[] headerColumns = header.split("\t", -1);
 
-				// Output Files
-				File featureOutput = new File(featureOutputPath);
+			int precursorMzIndex = findColumnIndex(headerColumns, "precursorMz");
+			int isDecoyIndex = findColumnIndex(headerColumns, "Label");
+			int retentionTimeIndex = findColumnIndex(headerColumns, "RTinMin");
+			int primaryScoreIndex = findColumnIndex(headerColumns, "primary");
+			@SuppressWarnings("unused")
+			int xCorrLibIndex = findColumnIndex(headerColumns, "xCorrLib");
+			int sequenceIndex = findColumnIndex(headerColumns, "sequence");
+			int proteinIndex = findColumnIndex(headerColumns, "Proteins");
 
-				ArrayList<ScoredFeature> featuresList = new ArrayList<>();
+			String line;
+			while ((line = br.readLine()) != null) {
+				String columns[] = line.split("\t", -1);
 
-				ArrayList<ScoredFeature> partitionedFeatures = new ArrayList<>(); // so that the return is all of the features
+				double mz = Double.parseDouble(columns[precursorMzIndex]);
+				byte featureCharge = PercolatorPeptide.getCharge(columns[0]);
+				boolean isDecoy = Integer.parseInt(columns[isDecoyIndex]) == -1;
+				float primary = Float.parseFloat(columns[primaryScoreIndex]);
+				float retentionTime = Float.parseFloat(columns[retentionTimeIndex]);
+				String sequence = columns[sequenceIndex];
+				String protein = columns[proteinIndex];
 
-				for (ScoredFeature feature : allFeatures) {
+				ScoredFeature feature = new ScoredFeature(mz, featureCharge, isDecoy, primary, retentionTime, sequence,
+						protein, line);
+				allFeatures.add(feature);
 
-					ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(), feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(), feature.getOriginalLine());
-					partitionedFeatures.add(annotatedFeature);
+			}
+		}
 
-					if (annotatedFeature!=null) {
-						featuresList.add(feature); 
-					}
-				}
-				
-				writeScoredFeatures(featureOutput, featuresList, header);
+		// Output Paths
+		String featureOutputPath = baseName + ".features.txt";
 
-				System.out.println("Target features: " + featuresList.size());
-				return partitionedFeatures;
+		// Output Files
+		File featureOutput = new File(featureOutputPath);
+
+		ArrayList<ScoredFeature> featuresList = new ArrayList<>();
+
+		ArrayList<ScoredFeature> partitionedFeatures = new ArrayList<>(); // so that the return is all of the features
+
+		for (ScoredFeature feature : allFeatures) {
+
+			ScoredFeature annotatedFeature = new ScoredFeature(feature.getMz(), feature.isDecoy(), feature.getPrimary(),
+					feature.getRetentionTime(), cleanPeptideSequence(feature.getSequence()), feature.getProtein(),
+					feature.getOriginalLine());
+			partitionedFeatures.add(annotatedFeature);
+
+			if (annotatedFeature != null) {
+				featuresList.add(feature);
+			}
+		}
+
+		writeScoredFeatures(featureOutput, featuresList, header);
+
+		Logger.logLine("Target features: " + featuresList.size());
+		return partitionedFeatures;
 	}
 }
