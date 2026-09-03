@@ -454,7 +454,8 @@ public class EncyclopediaTwo {
 				// prepare executor for background
 				ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("STRIPE_" + range.getStart() + "to" + range.getStop() + "-%d").setDaemon(true).build();
 				LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>();
-				try (ExecutorService executor = new ThreadPoolExecutor(cores, cores, Long.MAX_VALUE, TimeUnit.NANOSECONDS, workQueue, threadFactory)) {
+				ExecutorService executor = new ThreadPoolExecutor(cores, cores, Long.MAX_VALUE, TimeUnit.NANOSECONDS, workQueue, threadFactory);
+				try {
 					int count = 0;
 
 					for (LibraryEntry entry : entries) {
@@ -509,6 +510,9 @@ public class EncyclopediaTwo {
 					Thread.sleep(500);
 				}
 				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			} finally {
+				// ExecutorService is only AutoCloseable from Java 19, and this project targets 17.
+				executor.shutdownNow();
 			}
 
 			rangesFinished++;
