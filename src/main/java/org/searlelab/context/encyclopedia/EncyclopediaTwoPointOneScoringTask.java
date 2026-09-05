@@ -491,18 +491,18 @@ public class EncyclopediaTwoPointOneScoringTask extends AbstractLibraryScoringTa
 				}
 			}
 			
-			if (identifiedPeaks==0) {
+//			if (identifiedPeaks==0) {
 				// add the best data if we can't find any valid peaks
-				float deltaPrecursorMass=auxScorer.getParentDeltaMassIndex()>=0?bestAuxScores[auxScorer.getParentDeltaMassIndex()]:0.0f;
-				float deltaFragmentMass=auxScorer.getFragmentDeltaMassIndex()>=0?bestAuxScores[auxScorer.getFragmentDeltaMassIndex()]:0.0f;
-				if (entry.getPeptideModSeq().equals("VVDESDETENQEEKAK")||entry.getPeptideModSeq().equals("VAKEEQNETEDSEDVK")) {
-					System.out.println(">"+entry.getPeptideModSeq()+" --> "+(bestStripe.getScanStartTime()/60f)+", "+bestScore);	
-				}
-				result.addStripe(entry, bestScore, bestAuxScores, deltaPrecursorMass, deltaFragmentMass, bestStripe);
-			}
+//				float deltaPrecursorMass=auxScorer.getParentDeltaMassIndex()>=0?bestAuxScores[auxScorer.getParentDeltaMassIndex()]:0.0f;
+//				float deltaFragmentMass=auxScorer.getFragmentDeltaMassIndex()>=0?bestAuxScores[auxScorer.getFragmentDeltaMassIndex()]:0.0f;
+//				if (entry.getPeptideModSeq().equals("VVDESDETENQEEKAK")||entry.getPeptideModSeq().equals("VAKEEQNETEDSEDVK")) {
+//					System.out.println(">"+entry.getPeptideModSeq()+" --> "+(bestStripe.getScanStartTime()/60f)+", "+bestScore);	
+//				}
+//				result.addStripe(entry, bestScore, bestAuxScores, deltaPrecursorMass, deltaFragmentMass, bestStripe);
+//			}
 			
 		}
-//		result.trim(1);
+		result.trim(1);
 		resultsQueue.add(result);
 		return Nothing.NOTHING;
 	}

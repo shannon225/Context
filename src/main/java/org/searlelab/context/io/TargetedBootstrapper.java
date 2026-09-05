@@ -29,8 +29,6 @@ import edu.washington.gs.maccoss.encyclopedia.utils.math.RandomGenerator;
 
 public class TargetedBootstrapper {
 
-	private static final int ENTRAPMENT_PER_TARGET = 5;
-
 	public void execute(String libraryPath, String rawFilePath, int maxSeed, int numberOfPeptides,
 			float halfWindowWidthRT, double halfWindowWidthMz, int trapsPerTarget) throws Throwable {
 		Path rawFile = Paths.get(rawFilePath);
@@ -146,7 +144,7 @@ public class TargetedBootstrapper {
 		return targetWindows;
 	}
 
-	public ArrayList<IsolationWindow> selectDecoys(ArrayList<IsolationWindow> targetWindows, AminoAcidConstants aaConstants, int i, String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz, ArrayList<IsolationWindow> unmatchedTargets) throws Exception {
+	public ArrayList<IsolationWindow> selectDecoys(ArrayList<IsolationWindow> targetWindows, AminoAcidConstants aaConstants, int i, String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz, ArrayList<IsolationWindow> unmatchedTargets, int trapsPerTarget) throws Exception {
 
 		ArrayList<IsolationWindow> decoyWindows = new ArrayList<IsolationWindow>();
 
@@ -176,7 +174,7 @@ public class TargetedBootstrapper {
 				ArrayList<IsolationWindow> decoysForTarget = new ArrayList<>();
 				HashSet<String> decoysForThisTarget = new HashSet<>();
 
-				while (decoysForTarget.size() < ENTRAPMENT_PER_TARGET && mzTolerancePPM <= 320) {
+				while (decoysForTarget.size() < trapsPerTarget && mzTolerancePPM <= 320) {
 
 					double mzToleranceDa = targetMz * mzTolerancePPM / 1_000_000;
 					double upperMz = targetMz + mzToleranceDa;
@@ -238,20 +236,20 @@ public class TargetedBootstrapper {
 							decoysForTarget.add(decoyWindow);
 							decoysForThisTarget.add(decoySequence);
 
-							Logger.logLine("Decoy " + decoysForThisTarget.size() + " of " + ENTRAPMENT_PER_TARGET + " for target " + targetSequence + " at " + candidateRT / 60f);
+							Logger.logLine("Decoy " + decoysForThisTarget.size() + " of " + trapsPerTarget + " for target " + targetSequence + " at " + candidateRT / 60f);
 
-							if (decoysForTarget.size() == ENTRAPMENT_PER_TARGET) {
+							if (decoysForTarget.size() == trapsPerTarget) {
 								break; // end loop after adding one decoy per target
 							}
 						}
 					}
 
-					if (decoysForTarget.size() < ENTRAPMENT_PER_TARGET) {
+					if (decoysForTarget.size() < trapsPerTarget) {
 						mzTolerancePPM *= 2;
 					}
 				}
 				
-				if (decoysForTarget.size() == ENTRAPMENT_PER_TARGET) {
+				if (decoysForTarget.size() == trapsPerTarget) {
 
 					// Commit decoys after the complete set was found
 					decoyWindows.addAll(decoysForTarget);
@@ -265,7 +263,7 @@ public class TargetedBootstrapper {
 				} else {
 
 					unmatchedTargets.add(targetWindow);
-					Logger.logLine("Only found " + decoyWindows.size() + " of " + ENTRAPMENT_PER_TARGET + " requested entrapment peptides for target " + targetSequence + ".");
+					Logger.logLine("Only found " + decoyWindows.size() + " of " + trapsPerTarget + " requested entrapment peptides for target " + targetSequence + ".");
 
 				}
 			}
@@ -309,7 +307,7 @@ public class TargetedBootstrapper {
 
 			// Select decoys
 			decoyWindows = selectDecoys(targetWindows, aaConstants, i, libraryPath, halfWindowWidthRT,
-					halfWindowWidthMz, unmatchedTargets);
+					halfWindowWidthMz, unmatchedTargets, trapsPerTarget);
 
 			if (unmatchedTargets.isEmpty()) {
 				break;
@@ -341,7 +339,7 @@ public class TargetedBootstrapper {
 			targetWindows.addAll(replacementTargets);
 		}
 
-		int expectedDecoyCount = targetWindows.size() * ENTRAPMENT_PER_TARGET;
+		int expectedDecoyCount = targetWindows.size() * trapsPerTarget;
 
 		if (decoyWindows.size() != expectedDecoyCount) {
 			throw new IllegalStateException("Excepted " + expectedDecoyCount + " decoys for " + targetWindows.size()
@@ -353,7 +351,7 @@ public class TargetedBootstrapper {
 
 		for (IsolationWindow targetWindow : targetWindows) {
 			isolationWindows.add(targetWindow);
-			for (int j = 0; j < ENTRAPMENT_PER_TARGET; j++) {
+			for (int j = 0; j < trapsPerTarget; j++) {
 				isolationWindows.add(decoyWindows.get(decoyIndex));
 				decoyIndex++;
 			}
