@@ -32,7 +32,7 @@ public class TargetedBootstrapper {
 	private static final int ENTRAPMENT_PER_TARGET = 5;
 
 	public void execute(String libraryPath, String rawFilePath, int maxSeed, int numberOfPeptides,
-			float halfWindowWidthRT, double halfWindowWidthMz, boolean useTraps) throws Throwable {
+			float halfWindowWidthRT, double halfWindowWidthMz, int trapsPerTarget) throws Throwable {
 		Path rawFile = Paths.get(rawFilePath);
 		String rawFileName = rawFile.getFileName().toString();
 		String baseName = rawFileName.replaceFirst("\\.dia$", "");
@@ -40,8 +40,8 @@ public class TargetedBootstrapper {
 		AminoAcidConstants aaConstants = new AminoAcidConstants();
 
 		for (int seed = 1; seed <= maxSeed; seed++) {
-			ArrayList<IsolationWindow> isolationWindows = selectMask(useTraps, numberOfPeptides, aaConstants, seed, libraryPath,
-					halfWindowWidthRT, halfWindowWidthMz);
+			ArrayList<IsolationWindow> isolationWindows = selectMask(numberOfPeptides, aaConstants, seed, libraryPath,
+					halfWindowWidthRT, halfWindowWidthMz, trapsPerTarget);
 
 			Path maskedFileOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.dia");
 			Path assayOutputPath = rawFile.getParent().resolve(baseName + "_masked" + seed + "_assay.txt");
@@ -286,8 +286,8 @@ public class TargetedBootstrapper {
 }
 
 // First function - Randomly Selects Precursors from a library, places on a list
-	public ArrayList<IsolationWindow> selectMask(boolean useEntrapment, int numberOfPeptides, AminoAcidConstants aaConstants, int i,
-			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz)
+	public ArrayList<IsolationWindow> selectMask(int numberOfPeptides, AminoAcidConstants aaConstants, int i,
+			String libraryPath, float halfWindowWidthRT, double halfWindowWidthMz, int trapsPerTarget)
 			throws IOException, SQLException, Throwable {
 
 		// START TIMER 1
@@ -298,10 +298,9 @@ public class TargetedBootstrapper {
 				halfWindowWidthRT, halfWindowWidthMz, rejectedTargetSequences);
 		ArrayList<IsolationWindow> isolationWindows = new ArrayList<>();
 		
-		if (useEntrapment) {
+		if (trapsPerTarget >= 0) {
 			ArrayList<IsolationWindow> decoyWindows;
 		
-
 		int replacementRound = 0;
 
 		while (true) {
